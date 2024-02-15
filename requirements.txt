@@ -1,0 +1,4 @@
+loguru>=0.5.3
+Eel>=0.16.0
+python-dateutil>=2.8.2
+pandas>=1.4.4
