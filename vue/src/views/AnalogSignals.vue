@@ -1,12 +1,15 @@
 <script>
 import Multiselect from '@vueform/multiselect'
 import { ref, onMounted } from 'vue'
-import { getAnalogKKS } from '../stores'
+import { getAnalogKKS, getAnalogSignals } from '../stores'
+
+import { useApplicationStore } from '../stores/applicationStore'
 
 export default {
   name: 'AnalogSignals',
   components: { Multiselect },
   setup() {
+    const applicationStore = useApplicationStore()
     const analogSensors = ref([])
     const sensors = ref(null)
     let chosenSensors = []
@@ -26,6 +29,15 @@ export default {
     let chosenQuality = []
 
     const dateTime = ref()
+    const dateTimeBeginReport = ref()
+    const dateTimeEndReport = ref()
+
+    const dataTable = ref()
+    const dataTableRequested = ref(false)
+    const dataTableStartRequested = ref(false)
+
+    const progressBarAnalogSignals = ref('0')
+    const progressBarAnalogSignalsActive = ref(false)
 
     onMounted(async () => {
       await getAnalogKKS(analogSensors)
@@ -39,10 +51,39 @@ export default {
       chosenQuality = val
     }
 
-    function onRequestButtonClick() {
-      if (!chosenSensors.length || !chosenQuality.length || !dateTime.value)
+    async function onRequestButtonClick() {
+      dataTableRequested.value = false
+      dateTimeBeginReport.value = new Date().toLocaleString()
+      if (!chosenSensors.length || !chosenQuality.length || !dateTime.value) {
         alert('Не заполнены параметры запроса!')
+        return
+      }
+      dataTableStartRequested.value = true
+      progressBarAnalogSignalsActive.value = true
+      progressBarAnalogSignals.value = '0'
+      await getAnalogSignals(chosenSensors, chosenQuality, dateTime.value, dataTable)
+      dataTableRequested.value = true
+      dateTimeEndReport.value = new Date().toLocaleString()
+      progressBarAnalogSignals.value = '100'
+      progressBarAnalogSignalsActive.value = false
+      console.log(dataTable.value)
     }
+
+    function qualityClass(quality) {
+      return [{ 'bg-danger text-white': applicationStore.badCode.includes(quality["Качество"]),
+                'bg-warning text-white': quality["Качество"] === ''}];
+    }
+
+    function codeOfQualityClass(code) {
+      return [{ 'bg-danger text-white': applicationStore.badNumericCode.includes(code["Код качества"]),
+                'bg-warning text-white': code["Код качества"] === ''}];
+    }
+
+
+    function setProgressBarAnalogSignals(count) {
+      progressBarAnalogSignals.value = String(count)
+    }
+    window.eel.expose(setProgressBarAnalogSignals, 'setProgressBarAnalogSignals')
 
     return {
       analogSensors,
@@ -54,7 +95,17 @@ export default {
       chosenQuality,
       onMultiselectQualitiesChange,
       dateTime,
-      onRequestButtonClick
+      dateTimeBeginReport,
+      dateTimeEndReport,
+      onRequestButtonClick,
+      dataTable,
+      dataTableRequested,
+      dataTableStartRequested,
+      qualityClass,
+      codeOfQualityClass,
+      progressBarAnalogSignals,
+      progressBarAnalogSignalsActive,
+      setProgressBarAnalogSignals
     }
   }
 }
@@ -123,6 +174,60 @@ export default {
           <Button @click="onRequestButtonClick">Запрос</Button>
         </div>
       </div>
+      <div class="row" v-if="dataTableStartRequested">
+        Старт построения отчета: {{ dateTimeBeginReport }}
+      </div>
+      <div class="row" v-if="progressBarAnalogSignalsActive">
+        <div class="col">
+          <ProgressBar
+           :value="progressBarAnalogSignals"
+          ></ProgressBar>
+        </div>
+      </div>
+      <div class="row">
+        <div class="card" v-if="dataTableRequested">
+          <DataTable
+            :value="dataTable"
+            paginator
+            :rows="10"
+            :rowsPerPageOptions="[10, 20, 50, 100]"
+            scrollable="true"
+            scrollHeight="1000px"
+            columnResizeMode="fit"
+            showGridlines="true"
+            tableStyle="min-width: 50rem"
+          >
+            <Column
+              field="Код сигнала (AKS)"
+              header="Код сигнала (AKS)"
+              sortable
+              style="width: 35%"
+            ></Column>
+            <Column
+              field="Дата и время измерения"
+              header="Дата и время измерения"
+              sortable
+              style="width: 30%"
+            ></Column>
+            <Column field="Значение" header="Значение" sortable style="width: 10%"></Column>
+            <Column field="Качество" header="Качество" sortable style="width: 20%">
+              <template #body="slotProps">
+                <div :class="qualityClass(slotProps.data)">
+                  {{ slotProps.data["Качество"] }}
+                </div>
+              </template>
+            </Column>
+            <Column field="Код качества" header="Код качества" sortable style="width: 5%">
+              <template #body="slotProps">
+                <div :class="codeOfQualityClass(slotProps.data)">
+                  {{ slotProps.data["Код качества"] }}
+                </div>
+              </template>
+            </Column>
+          </DataTable>
+        </div>
+      </div>
+      <div class="row" v-if="dataTableRequested">Отчет: {{ dateTimeEndReport }}</div>
     </div>
   </div>
 </template>

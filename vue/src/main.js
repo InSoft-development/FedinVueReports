@@ -21,6 +21,9 @@ import InputNumber from 'primevue/inputnumber'
 import RadioButton from 'primevue/radiobutton'
 import Checkbox from 'primevue/checkbox'
 import InputText from 'primevue/inputtext'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import ProgressBar from 'primevue/progressbar'
 
 const app = createApp(App)
 
@@ -35,5 +38,8 @@ app.component('InputNumber', InputNumber)
 app.component('RadioButton', RadioButton)
 app.component('Checkbox', Checkbox)
 app.component('InputText', InputText)
+app.component('DataTable', DataTable)
+app.component('Column', Column)
+app.component('ProgressBar', ProgressBar)
 
 app.mount('#app')
