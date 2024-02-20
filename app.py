@@ -185,16 +185,150 @@ def get_analog_signals_data(kks, quality, date):
     logger.info("data frame has been formed")
 
     # get_report_slice(df_report, 'аналоговых')
-    #
-    # with export_pdf_col:
-    #     with open(REPORT_FILE, "rb") as pdf_file:
-    #         PDFbyte = pdf_file.read()
-    #     export_pdf_button = st.download_button("Загрузить отчет", data=PDFbyte,
-    #                                            file_name=PDF_FILE_NAME,
-    #                                            key="download_report_button_",
-    #                                            mime="application/octet-stream")
-    #
+
     shutil.copy(constants.CSV_ANALOG_SLICES, f'{constants.WEB_DIR}analog_slice.csv')
+    logger.info("data frame is accessed for download")
+
+    df_report['Дата и время измерения'] = df_report['Дата и время измерения'].dt.strftime('%Y-%m-%d %H:%M:%S')
+    return json.loads(df_report.to_json(orient='records'))
+
+
+@eel.expose
+def get_discrete_signals_data(kks, values, quality, date):
+    logger.info(f"get_discrete_signals_data({kks}, {values}, {quality}, {date})")
+    error_flag = False
+
+    # Подготовка к выполнению запроса
+    # Формирование списка выбранных кодов качества
+    correct_quality_list = list(map(lambda x: constants.QUALITY_CODE_DICT[x], quality))
+
+    # Формирование декартового произведения
+    decart_list = [kks, correct_quality_list, values]
+    decart_product = []
+
+    for element in itertools.product(*decart_list):
+        decart_product.append(element)
+
+    # Сбрасываем обобщенную таблицу
+    con_common_data = sqlite3.connect(constants.CLIENT_COMMON_DATA)
+    cursor = con_common_data.cursor()
+    cursor.execute(f'DROP TABLE IF EXISTS {constants.CLIENT_COMMON_DATA_TABLE}')
+    con_common_data.commit()
+    con_common_data.close()
+
+    for i, element in enumerate(decart_product):
+        # Сохранение датчика с KKS
+        csv_tag_KKS = pd.DataFrame(data=[element[0]])
+        csv_tag_KKS.to_csv(constants.CLIENT_KKS, index=False, header=None)
+
+        # Формирование команды для запуска бинарника historian
+        command_datetime_begin_time = (parse(date) - datetime.timedelta(seconds=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        command_datetime_end_time = parse(date).strftime("%Y-%m-%dT%H:%M:%SZ")
+        command_string = f"cd client && ./client_lesson02.so -b {command_datetime_begin_time} -e " \
+                         f"{command_datetime_end_time} -p 100 -t 10000 -r -xw"
+
+        logger.info(f'get OPC_UA: {element[0]}->{element[1]}->{element[2]}')
+        logger.info(command_string)
+
+        args = command_string
+        try:
+            subprocess.run(args, capture_output=True, shell=True, check=True)
+        except subprocess.CalledProcessError as e:
+            logger.error(e)
+            return f"Произошла ошибка {str(e)}"
+
+        # Достаем фрейм из sqlite
+        con_current_data = sqlite3.connect(constants.CLIENT_DATA)
+
+        query_string = f"SELECT * from {constants.CLIENT_DYNAMIC_TABLE} WHERE id='{element[0]}' " \
+                       f"AND status='{element[1]}' AND val={element[2]} AND t <= '{parse(date).strftime('%Y-%m-%d %H:%M:%S')}' " \
+                       f"ORDER BY t DESC LIMIT 1"
+        logger.info(query_string)
+
+        df_sqlite = pd.read_sql_query(
+            query_string,
+            con_current_data, parse_dates=['t'])
+        con_current_data.close()
+        logger.info(df_sqlite)
+        # Если не нашли, то расширяем поиск:
+        if df_sqlite.empty:
+            logger.info(f"{constants.CLIENT_DATA} is empty")
+            delta = 2  # Строим запрос на 2 секунды раньше
+            delta_prev = 0  # Формирование окна просмотра архива посредстовом сохранения предыдущего datetime
+            while df_sqlite.empty:
+                logger.info(df_sqlite)
+                try:
+                    # Формирование повторной команды с расширенной выборкой
+                    command_datetime_begin_time = (parse(date) - datetime.timedelta(hours=delta)).strftime(
+                        "%Y-%m-%dT%H:%M:%SZ")
+                    command_datetime_end_time = (parse(date) - datetime.timedelta(hours=delta_prev)).strftime(
+                        "%Y-%m-%dT%H:%M:%SZ")
+
+                    command_string = f"cd client && ./client_lesson02.so -b {command_datetime_begin_time} -e " \
+                                     f"{command_datetime_end_time} -p 100 -t 10000 -xw"
+                    logger.info(f'get OPC_UA: {element[0]}->{element[1]}->{element[2]}')
+                    logger.info(command_string)
+
+                    args = command_string
+                    try:
+                        subprocess.run(args, capture_output=True, shell=True, check=True)
+                    except subprocess.CalledProcessError as e:
+                        logger.error(e)
+                        return f"Произошла ошибка {str(e)}"
+
+                    con_current_data = sqlite3.connect(constants.CLIENT_DATA)
+                    df_sqlite = pd.read_sql_query(
+                        query_string,
+                        con_current_data, parse_dates=['t'])
+                    con_current_data.close()
+                    delta_prev = delta
+                    delta += constants.STEP_OF_BACK_SEARCH
+                    # Если больше 1 года
+                    if delta > constants.BACK_SEARCH_TIME_IN_HOUR:
+                        logger.info(f'За год не нашлось: {element[0]}->{element[1]}->{element[2]}')
+                        error_flag = True
+                        break
+                except OverflowError:
+                    error_flag = True
+                    logger.info(f'OverflowError: {element[0]}->{element[1]}->{element[2]}')
+                    logger.info(f'begin_time = {command_datetime_begin_time}; end_time = {command_datetime_end_time}')
+                    break
+
+        if not error_flag:
+            con_common_data = sqlite3.connect(constants.CLIENT_COMMON_DATA)
+            logger.info(con_common_data)
+            df_sqlite.to_sql(f'{constants.CLIENT_COMMON_DATA_TABLE}', con_common_data, if_exists='append', index=False)
+            con_common_data.close()
+            logger.info(f'successfully completed: {element[0]}->{element[1]}->{element[2]}')
+        error_flag = False
+        eel.setProgressBarDiscreteSignals(int((i + 1) / len(decart_product) * 100))
+
+    try:
+        con_common_data = sqlite3.connect(constants.CLIENT_COMMON_DATA)
+
+        df_sqlite = pd.read_sql_query(
+            f"SELECT * from {constants.CLIENT_COMMON_DATA_TABLE}",
+            con_common_data, parse_dates=['t'])
+    except Exception as e:
+        logger.error(f"{constants.CLIENT_COMMON_DATA_TABLE} is empty: {e}")
+        return f"Никаких данных за год не нашлось"
+    finally:
+        con_common_data.close()
+
+    df_report = pd.DataFrame(
+        columns=['Код сигнала (AKS)', 'Дата и время измерения', 'Значение', 'Качество',
+                 'Код качества'],
+        data={'Код сигнала (AKS)': df_sqlite['id'],
+              'Дата и время измерения': df_sqlite['t'],
+              'Значение': df_sqlite['val'],
+              'Качество': df_sqlite['status'],
+              'Код качества': list(map(lambda x: constants.QUALITY_DICT[x], df_sqlite['status'].to_list()))})
+    df_report.to_csv(constants.CSV_DISCRETE_SLICES, index=False, encoding='utf-8')
+    logger.info("data frame has been formed")
+
+    # get_report_slice(df_report, 'аналоговых')
+
+    shutil.copy(constants.CSV_DISCRETE_SLICES, f'{constants.WEB_DIR}discrete_slice.csv')
     logger.info("data frame is accessed for download")
 
     df_report['Дата и время измерения'] = df_report['Дата и время измерения'].dt.strftime('%Y-%m-%d %H:%M:%S')

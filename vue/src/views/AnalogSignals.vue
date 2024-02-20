@@ -53,39 +53,50 @@ export default {
 
     async function onRequestButtonClick() {
       dataTableRequested.value = false
+      dataTableStartRequested.value = true
       dateTimeBeginReport.value = new Date().toLocaleString()
       if (!chosenSensors.length || !chosenQuality.length || !dateTime.value) {
         alert('Не заполнены параметры запроса!')
         return
       }
-      dataTableStartRequested.value = true
       progressBarAnalogSignalsActive.value = true
       progressBarAnalogSignals.value = '0'
-      await getAnalogSignals(chosenSensors, chosenQuality, dateTime.value, dataTable)
-      dataTableRequested.value = true
+      await getAnalogSignals(
+        chosenSensors,
+        chosenQuality,
+        dateTime.value,
+        dataTable,
+        dataTableRequested
+      )
       dateTimeEndReport.value = new Date().toLocaleString()
       progressBarAnalogSignals.value = '100'
       progressBarAnalogSignalsActive.value = false
-      console.log(dataTable.value)
     }
 
     function qualityClass(quality) {
-      return [{ 'bg-danger text-white': applicationStore.badCode.includes(quality["Качество"]),
-                'bg-warning text-white': quality["Качество"] === ''}];
+      return [
+        {
+          'bg-danger text-white': applicationStore.badCode.includes(quality['Качество']),
+          'bg-warning text-white': quality['Качество'] === ''
+        }
+      ]
     }
 
     function codeOfQualityClass(code) {
-      return [{ 'bg-danger text-white': applicationStore.badNumericCode.includes(code["Код качества"]),
-                'bg-warning text-white': code["Код качества"] === ''}];
+      return [
+        {
+          'bg-danger text-white': applicationStore.badNumericCode.includes(code['Код качества']),
+          'bg-warning text-white': code['Код качества'] === ''
+        }
+      ]
     }
-
 
     function setProgressBarAnalogSignals(count) {
       progressBarAnalogSignals.value = String(count)
     }
     window.eel.expose(setProgressBarAnalogSignals, 'setProgressBarAnalogSignals')
 
-    function onButtonDownloadCsvClick(){
+    function onButtonDownloadCsvClick() {
       const link = document.createElement('a')
       const pathAnalogSignalsCsv = 'analog_slice.csv'
       link.setAttribute('download', pathAnalogSignalsCsv)
@@ -96,7 +107,7 @@ export default {
       link.remove()
     }
 
-    function onButtonDownloadPdfClick(){
+    function onButtonDownloadPdfClick() {
       return
     }
 
@@ -190,10 +201,10 @@ export default {
         <div class="col">
           <Button @click="onRequestButtonClick">Запрос</Button>
         </div>
-        <div class="col" v-if="dataTableStartRequested">
+        <div class="col" v-if="dataTableRequested">
           <Button @click="onButtonDownloadPdfClick">Загрузить отчет</Button>
         </div>
-        <div class="col" v-if="dataTableStartRequested">
+        <div class="col" v-if="dataTableRequested">
           <Button @click="onButtonDownloadCsvClick">Загрузить CSV</Button>
         </div>
       </div>
@@ -202,9 +213,7 @@ export default {
       </div>
       <div class="row" v-if="progressBarAnalogSignalsActive">
         <div class="col">
-          <ProgressBar
-           :value="progressBarAnalogSignals"
-          ></ProgressBar>
+          <ProgressBar :value="progressBarAnalogSignals"></ProgressBar>
         </div>
       </div>
       <div class="row">
@@ -236,14 +245,14 @@ export default {
             <Column field="Качество" header="Качество" sortable style="width: 20%">
               <template #body="slotProps">
                 <div :class="qualityClass(slotProps.data)">
-                  {{ slotProps.data["Качество"] }}
+                  {{ slotProps.data['Качество'] }}
                 </div>
               </template>
             </Column>
             <Column field="Код качества" header="Код качества" sortable style="width: 5%">
               <template #body="slotProps">
                 <div :class="codeOfQualityClass(slotProps.data)">
-                  {{ slotProps.data["Код качества"] }}
+                  {{ slotProps.data['Код качества'] }}
                 </div>
               </template>
             </Column>
@@ -255,9 +264,4 @@ export default {
   </div>
 </template>
 
-<style src="@vueform/multiselect/themes/default.css">
-/*.col{*/
-/*  padding-bottom: 100px;*/
-/*  margin-bottom: 100px;*/
-/*}*/
-</style>
+<style src="@vueform/multiselect/themes/default.css"></style>

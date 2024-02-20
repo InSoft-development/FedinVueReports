@@ -1,12 +1,16 @@
 <script>
 import Multiselect from '@vueform/multiselect'
 import { ref, onMounted } from 'vue'
-import { getDiscreteKKSByMask } from '../stores'
+import { getDiscreteKKSByMask, getDiscreteSignals } from '../stores'
+
+import { useApplicationStore } from '../stores/applicationStore'
 
 export default {
   name: 'DiscreteSignals',
   components: { Multiselect },
   setup() {
+    const applicationStore = useApplicationStore()
+
     const templateSignals = ref([
       '.*\\.state\\..*',
       '.*-icCV_.*\\.state\\..*',
@@ -39,6 +43,15 @@ export default {
     let chosenQuality = []
 
     const dateTime = ref()
+    const dateTimeBeginReport = ref()
+    const dateTimeEndReport = ref()
+
+    const dataTable = ref()
+    const dataTableRequested = ref(false)
+    const dataTableStartRequested = ref(false)
+
+    const progressBarDiscreteSignals = ref('0')
+    const progressBarDiscreteSignalsActive = ref(false)
 
     onMounted(async () => {
       await getDiscreteKKSByMask(discreteSensors, chosenTemplate.value)
@@ -62,9 +75,70 @@ export default {
       chosenQuality = val
     }
 
-    function onRequestButtonClick() {
-      if (!chosenSensors.length || !chosenQuality.length || !chosenValues.length || !dateTime.value)
+    async function onRequestButtonClick() {
+      dataTableRequested.value = false
+      dataTableStartRequested.value = true
+      dateTimeBeginReport.value = new Date().toLocaleString()
+      if (
+        !chosenSensors.length ||
+        !chosenQuality.length ||
+        !chosenValues.length ||
+        !dateTime.value
+      ) {
         alert('Не заполнены параметры запроса!')
+        return
+      }
+      progressBarDiscreteSignalsActive.value = true
+      progressBarDiscreteSignals.value = '0'
+      await getDiscreteSignals(
+        chosenSensors,
+        chosenValues,
+        chosenQuality,
+        dateTime.value,
+        dataTable,
+        dataTableRequested
+      )
+      dateTimeEndReport.value = new Date().toLocaleString()
+      progressBarDiscreteSignals.value = '100'
+      progressBarDiscreteSignalsActive.value = false
+    }
+
+    function qualityClass(quality) {
+      return [
+        {
+          'bg-danger text-white': applicationStore.badCode.includes(quality['Качество']),
+          'bg-warning text-white': quality['Качество'] === ''
+        }
+      ]
+    }
+
+    function codeOfQualityClass(code) {
+      return [
+        {
+          'bg-danger text-white': applicationStore.badNumericCode.includes(code['Код качества']),
+          'bg-warning text-white': code['Код качества'] === ''
+        }
+      ]
+    }
+
+    function setProgressBarDiscreteSignals(count) {
+      progressBarDiscreteSignals.value = String(count)
+    }
+    window.eel.expose(setProgressBarDiscreteSignals, 'setProgressBarDiscreteSignals')
+
+    function onButtonDownloadCsvClick() {
+      const link = document.createElement('a')
+      const pathDiscreteSignalsCsv = 'discrete_slice.csv'
+      link.setAttribute('download', pathDiscreteSignalsCsv)
+      link.setAttribute('type', 'application/octet-stream')
+      link.setAttribute('href', 'discrete_slice.csv')
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    }
+
+    function onButtonDownloadPdfClick() {
+      return
     }
 
     return {
@@ -84,7 +158,19 @@ export default {
       chosenQuality,
       onMultiselectQualitiesChange,
       dateTime,
-      onRequestButtonClick
+      dateTimeBeginReport,
+      dateTimeEndReport,
+      onRequestButtonClick,
+      dataTable,
+      dataTableRequested,
+      dataTableStartRequested,
+      qualityClass,
+      codeOfQualityClass,
+      progressBarDiscreteSignals,
+      progressBarDiscreteSignalsActive,
+      setProgressBarDiscreteSignals,
+      onButtonDownloadCsvClick,
+      onButtonDownloadPdfClick
     }
   }
 }
@@ -187,7 +273,65 @@ export default {
         <div class="col">
           <Button @click="onRequestButtonClick">Запрос</Button>
         </div>
+        <div class="col" v-if="dataTableRequested">
+          <Button @click="onButtonDownloadPdfClick">Загрузить отчет</Button>
+        </div>
+        <div class="col" v-if="dataTableRequested">
+          <Button @click="onButtonDownloadCsvClick">Загрузить CSV</Button>
+        </div>
       </div>
+      <div class="row" v-if="dataTableStartRequested">
+        Старт построения отчета: {{ dateTimeBeginReport }}
+      </div>
+      <div class="row" v-if="progressBarDiscreteSignalsActive">
+        <div class="col">
+          <ProgressBar :value="progressBarDiscreteSignals"></ProgressBar>
+        </div>
+      </div>
+      <div class="row">
+        <div class="card" v-if="dataTableRequested">
+          <DataTable
+            :value="dataTable"
+            paginator
+            :rows="10"
+            :rowsPerPageOptions="[10, 20, 50, 100]"
+            scrollable="true"
+            scrollHeight="1000px"
+            columnResizeMode="fit"
+            showGridlines="true"
+            tableStyle="min-width: 50rem"
+          >
+            <Column
+              field="Код сигнала (AKS)"
+              header="Код сигнала (AKS)"
+              sortable
+              style="width: 35%"
+            ></Column>
+            <Column
+              field="Дата и время измерения"
+              header="Дата и время измерения"
+              sortable
+              style="width: 30%"
+            ></Column>
+            <Column field="Значение" header="Значение" sortable style="width: 10%"></Column>
+            <Column field="Качество" header="Качество" sortable style="width: 20%">
+              <template #body="slotProps">
+                <div :class="qualityClass(slotProps.data)">
+                  {{ slotProps.data['Качество'] }}
+                </div>
+              </template>
+            </Column>
+            <Column field="Код качества" header="Код качества" sortable style="width: 5%">
+              <template #body="slotProps">
+                <div :class="codeOfQualityClass(slotProps.data)">
+                  {{ slotProps.data['Код качества'] }}
+                </div>
+              </template>
+            </Column>
+          </DataTable>
+        </div>
+      </div>
+      <div class="row" v-if="dataTableRequested">Отчет: {{ dateTimeEndReport }}</div>
     </div>
   </div>
 </template>
