@@ -85,6 +85,21 @@ export default {
     }
     window.eel.expose(setProgressBarAnalogSignals, 'setProgressBarAnalogSignals')
 
+    function onButtonDownloadCsvClick(){
+      const link = document.createElement('a')
+      const pathAnalogSignalsCsv = 'analog_slice.csv'
+      link.setAttribute('download', pathAnalogSignalsCsv)
+      link.setAttribute('type', 'application/octet-stream')
+      link.setAttribute('href', 'analog_slice.csv')
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    }
+
+    function onButtonDownloadPdfClick(){
+      return
+    }
+
     return {
       analogSensors,
       sensors,
@@ -105,7 +120,9 @@ export default {
       codeOfQualityClass,
       progressBarAnalogSignals,
       progressBarAnalogSignalsActive,
-      setProgressBarAnalogSignals
+      setProgressBarAnalogSignals,
+      onButtonDownloadCsvClick,
+      onButtonDownloadPdfClick
     }
   }
 }
@@ -172,6 +189,12 @@ export default {
         </div>
         <div class="col">
           <Button @click="onRequestButtonClick">Запрос</Button>
+        </div>
+        <div class="col" v-if="dataTableStartRequested">
+          <Button @click="onButtonDownloadPdfClick">Загрузить отчет</Button>
+        </div>
+        <div class="col" v-if="dataTableStartRequested">
+          <Button @click="onButtonDownloadCsvClick">Загрузить CSV</Button>
         </div>
       </div>
       <div class="row" v-if="dataTableStartRequested">

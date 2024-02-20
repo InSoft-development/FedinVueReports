@@ -181,7 +181,7 @@ def get_analog_signals_data(kks, quality, date):
               'Код качества': list(map(lambda x: constants.QUALITY_DICT[x], df_sqlite['status'].to_list()))})
     # df_report['Дата и время измерения'] = pd.to_datetime(df_report['Дата и время измерения'], unit='ms')
     # output = st.dataframe(data=df_report.style.applymap(color_cell), use_container_width=False)
-    df_report.to_csv(constants.CSV_ANALOG_SLICES, index=False)
+    df_report.to_csv(constants.CSV_ANALOG_SLICES, index=False, encoding='utf-8')
     logger.info("data frame has been formed")
 
     # get_report_slice(df_report, 'аналоговых')
@@ -194,10 +194,9 @@ def get_analog_signals_data(kks, quality, date):
     #                                            key="download_report_button_",
     #                                            mime="application/octet-stream")
     #
-    # with csv_result_col:
-    #     result_csv = convert_df(df_report)
-    #     csv_result_button = st.download_button("Загрузить CSV", data=result_csv, file_name=CSV_NAME_RESULT_FILE,
-    #                                            mime='text/csv')
+    shutil.copy(constants.CSV_ANALOG_SLICES, f'{constants.WEB_DIR}analog_slice.csv')
+    logger.info("data frame is accessed for download")
+
     df_report['Дата и время измерения'] = df_report['Дата и время измерения'].dt.strftime('%Y-%m-%d %H:%M:%S')
     return json.loads(df_report.to_json(orient='records'))
 
