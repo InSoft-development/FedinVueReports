@@ -75,6 +75,12 @@ BAD_CODE_LIST = ['BadNoCommunication', 'BadSensorFailure', 'BadCommunicationFail
                  'BadDeviceFailure', 'UncertainLastUsableValue']
 BAD_NUMERIC_CODE_LIST = [8, 16, 24, 28, 88]
 
+DELTA_INTERVAL_IN_SECONDS = {'day': 86400,
+                             'hour': 3600,
+                             'minute': 60,
+                             'second': 1
+                             }
+
 BACK_SEARCH_TIME_IN_HOUR = 8760  # Предельное время поиска в глубину в часах
 STEP_OF_BACK_SEARCH = 720  # Глубина поиска в архивах
 

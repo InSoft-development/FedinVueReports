@@ -49,3 +49,45 @@ export async function getDiscreteSignals(
     dataTableRequested.value = true
   }
 }
+
+export async function getAnalogGrid(chosenSensors, dateBegin, dateEnd, interval, dimension,  dataTable, dataTableRequested, dataTableStatus) {
+  let formatDateBegin = new Date(dateBegin.toString().split('GMT')[0] + ' UTC').toISOString()
+  let formatDateEnd = new Date(dateEnd.toString().split('GMT')[0] + ' UTC').toISOString()
+  let result = await eel.get_analog_grid_data(
+    chosenSensors,
+    formatDateBegin,
+    formatDateEnd,
+    interval,
+    dimension
+  )()
+  if (typeof result === 'string') {
+    dataTableRequested.value = false
+    alert(result)
+  }
+  if (Array.isArray(result)) {
+    dataTable.value = result[0]
+    dataTableStatus.value = result[1]
+    dataTableRequested.value = true
+  }
+}
+
+export async function getDiscreteGrid(chosenSensors, dateBegin, dateEnd, interval, dimension,  dataTable, dataTableRequested, dataTableStatus) {
+  let formatDateBegin = new Date(dateBegin.toString().split('GMT')[0] + ' UTC').toISOString()
+  let formatDateEnd = new Date(dateEnd.toString().split('GMT')[0] + ' UTC').toISOString()
+  let result = await eel.get_discrete_grid_data(
+    chosenSensors,
+    formatDateBegin,
+    formatDateEnd,
+    interval,
+    dimension
+  )()
+  if (typeof result === 'string') {
+    dataTableRequested.value = false
+    alert(result)
+  }
+  if (Array.isArray(result)) {
+    dataTable.value = result[0]
+    dataTableStatus.value = result[1]
+    dataTableRequested.value = true
+  }
+}

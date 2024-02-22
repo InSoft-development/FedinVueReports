@@ -335,6 +335,162 @@ def get_discrete_signals_data(kks, values, quality, date):
     return json.loads(df_report.to_json(orient='records'))
 
 
+@eel.expose
+def get_analog_grid_data(kks, date_begin, date_end, interval, dimension):
+    logger.info(f"get_analog_grid_data({kks}, {date_begin}, {date_end}, {interval}, {dimension})")
+
+    # Сохранение датчика с KKS
+    csv_tag_KKS = pd.DataFrame(data=kks)
+    csv_tag_KKS.to_csv(constants.CLIENT_KKS, index=False, header=None)
+
+    # Формирование команд для запуска бинарника historian и скрипта slices.py
+    command_datetime_begin_time = parse(date_begin).strftime("%Y-%m-%d %H:%M:%S")
+    command_datetime_end_time = parse(date_end).strftime("%Y-%m-%d %H:%M:%S")
+
+    command_datetime_begin_time_binary = parse(date_begin).strftime("%Y-%m-%dT%H:%M:%SZ")
+    command_datetime_end_time_binary = parse(date_end).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    command_string_binary = f"cd client && ./client_lesson02.so -b {command_datetime_begin_time_binary} -e " \
+                            f"{command_datetime_end_time_binary} -p 100 -t 10000 -rxw"
+
+    delta_interval = interval * constants.DELTA_INTERVAL_IN_SECONDS[dimension]
+    command_string = f'cd client && python ./slicer_for_streamlit.py -d {delta_interval} ' \
+                     f'-t \"{command_datetime_begin_time}\" \"{command_datetime_end_time}\"'
+
+    logger.info("get OPC_UA")
+    logger.info(command_string_binary)
+
+    eel.setProgressBarAnalogSignals(5)
+
+    args = command_string_binary
+    try:
+        subprocess.run(args, capture_output=True, shell=True, check=True)
+        eel.setProgressBarAnalogSignals(10)
+    except subprocess.CalledProcessError as e:
+        logger.error(e)
+        return f"Произошла ошибка {str(e)}"
+
+    logger.info("get slices")
+    logger.info(command_string)
+
+    args = command_string
+    try:
+        eel.setProgressBarAnalogSignals(40)
+        subprocess.run(args, capture_output=True, shell=True, check=True)
+        eel.setProgressBarAnalogSignals(50)
+    except subprocess.CalledProcessError as e:
+        logger.error(e)
+        if "ValueError: sampling_period is greater than the duration between start and end" in str(e):
+            logger.error("интервал больше, чем дата начала и конца")
+            return f"интервал больше, чем дата начала и конца"
+
+    df_slice_csv = pd.read_csv(constants.CLIENT_SLICES)
+    df_slice_status_csv = pd.read_csv(constants.CLIENT_SLICES_STATUS)
+
+    df_report = pd.DataFrame(df_slice_csv['timestamp'])
+    df_report.rename(columns={'timestamp': 'Метка времени'}, inplace=True)
+
+    df_report_slice = pd.DataFrame(df_slice_status_csv['timestamp'])
+    df_report_slice.rename(columns={'timestamp': 'Метка времени'}, inplace=True)
+
+    for index, kks in enumerate(df_slice_csv.columns.tolist()[1:]):
+        df_report[index] = df_slice_csv[kks]
+        df_report_slice[index] = df_slice_status_csv[kks]
+
+    eel.setProgressBarAnalogSignals(70)
+
+    logger.info(df_report)
+    logger.info(df_report_slice)
+
+    df_report.to_csv(constants.CSV_ANALOG_GRID, index=False, encoding='utf-8')
+    logger.info("data frame has been formed")
+
+    shutil.copy(constants.CSV_ANALOG_GRID, f'{constants.WEB_DIR}analog_grid.csv')
+    logger.info("data frame is accessed for download")
+
+    # get_report_grid(code_kks, colored_df_list, colored_dict_list, 'аналоговых')
+
+    return json.loads(df_report.to_json(orient='records')), json.loads(df_report_slice.to_json(orient='records'))
+
+
+@eel.expose
+def get_discrete_grid_data(kks, date_begin, date_end, interval, dimension):
+    logger.info(f"get_discrete_grid_data({kks}, {date_begin}, {date_end}, {interval}, {dimension})")
+
+    # Сохранение датчика с KKS
+    csv_tag_KKS = pd.DataFrame(data=kks)
+    csv_tag_KKS.to_csv(constants.CLIENT_KKS, index=False, header=None)
+
+    # Формирование команд для запуска бинарника historian и скрипта slices.py
+    command_datetime_begin_time = parse(date_begin).strftime("%Y-%m-%d %H:%M:%S")
+    command_datetime_end_time = parse(date_end).strftime("%Y-%m-%d %H:%M:%S")
+
+    command_datetime_begin_time_binary = parse(date_begin).strftime("%Y-%m-%dT%H:%M:%SZ")
+    command_datetime_end_time_binary = parse(date_end).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    command_string_binary = f"cd client && ./client_lesson02.so -b {command_datetime_begin_time_binary} -e " \
+                            f"{command_datetime_end_time_binary} -p 100 -t 10000 -rxw"
+
+    delta_interval = interval * constants.DELTA_INTERVAL_IN_SECONDS[dimension]
+    command_string = f'cd client && python ./slicer_for_streamlit.py -d {delta_interval} ' \
+                     f'-t \"{command_datetime_begin_time}\" \"{command_datetime_end_time}\"'
+
+    logger.info("get OPC_UA")
+    logger.info(command_string_binary)
+
+    eel.setProgressBarAnalogSignals(5)
+
+    args = command_string_binary
+    try:
+        subprocess.run(args, capture_output=True, shell=True, check=True)
+        eel.setProgressBarDiscreteSignals(10)
+    except subprocess.CalledProcessError as e:
+        logger.error(e)
+        return f"Произошла ошибка {str(e)}"
+
+    logger.info("get slices")
+    logger.info(command_string)
+
+    args = command_string
+    try:
+        eel.setProgressBarDiscreteSignals(40)
+        subprocess.run(args, capture_output=True, shell=True, check=True)
+        eel.setProgressBarDiscreteSignals(50)
+    except subprocess.CalledProcessError as e:
+        logger.error(e)
+        if "ValueError: sampling_period is greater than the duration between start and end" in str(e):
+            logger.error("интервал больше, чем дата начала и конца")
+            return f"интервал больше, чем дата начала и конца"
+
+    df_slice_csv = pd.read_csv(constants.CLIENT_SLICES)
+    df_slice_status_csv = pd.read_csv(constants.CLIENT_SLICES_STATUS)
+
+    df_report = pd.DataFrame(df_slice_csv['timestamp'])
+    df_report.rename(columns={'timestamp': 'Метка времени'}, inplace=True)
+
+    df_report_slice = pd.DataFrame(df_slice_status_csv['timestamp'])
+    df_report_slice.rename(columns={'timestamp': 'Метка времени'}, inplace=True)
+
+    for index, kks in enumerate(df_slice_csv.columns.tolist()[1:]):
+        df_report[index] = df_slice_csv[kks]
+        df_report_slice[index] = df_slice_status_csv[kks]
+
+    eel.setProgressBarDiscreteSignals(70)
+
+    logger.info(df_report)
+    logger.info(df_report_slice)
+
+    df_report.to_csv(constants.CSV_DISCRETE_GRID, index=False, encoding='utf-8')
+    logger.info("data frame has been formed")
+
+    shutil.copy(constants.CSV_DISCRETE_GRID, f'{constants.WEB_DIR}discrete_grid.csv')
+    logger.info("data frame is accessed for download")
+
+    # get_report_grid(code_kks, colored_df_list, colored_dict_list, 'дискретных')
+
+    return json.loads(df_report.to_json(orient='records')), json.loads(df_report_slice.to_json(orient='records'))
+
+
 def on_close(page, sockets):
     """Callback close Eel application."""
     logger.info(page)
