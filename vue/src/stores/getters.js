@@ -50,7 +50,16 @@ export async function getDiscreteSignals(
   }
 }
 
-export async function getAnalogGrid(chosenSensors, dateBegin, dateEnd, interval, dimension,  dataTable, dataTableRequested, dataTableStatus) {
+export async function getAnalogGrid(
+  chosenSensors,
+  dateBegin,
+  dateEnd,
+  interval,
+  dimension,
+  dataTable,
+  dataTableRequested,
+  dataTableStatus
+) {
   let formatDateBegin = new Date(dateBegin.toString().split('GMT')[0] + ' UTC').toISOString()
   let formatDateEnd = new Date(dateEnd.toString().split('GMT')[0] + ' UTC').toISOString()
   let result = await eel.get_analog_grid_data(
@@ -71,7 +80,16 @@ export async function getAnalogGrid(chosenSensors, dateBegin, dateEnd, interval,
   }
 }
 
-export async function getDiscreteGrid(chosenSensors, dateBegin, dateEnd, interval, dimension,  dataTable, dataTableRequested, dataTableStatus) {
+export async function getDiscreteGrid(
+  chosenSensors,
+  dateBegin,
+  dateEnd,
+  interval,
+  dimension,
+  dataTable,
+  dataTableRequested,
+  dataTableStatus
+) {
   let formatDateBegin = new Date(dateBegin.toString().split('GMT')[0] + ' UTC').toISOString()
   let formatDateEnd = new Date(dateEnd.toString().split('GMT')[0] + ' UTC').toISOString()
   let result = await eel.get_discrete_grid_data(
@@ -92,7 +110,15 @@ export async function getDiscreteGrid(chosenSensors, dateBegin, dateEnd, interva
   }
 }
 
-export async function getBounceSignals(templateSignal, date, interval, dimension, showSensors,  dataTable, dataTableRequested) {
+export async function getBounceSignals(
+  templateSignal,
+  date,
+  interval,
+  dimension,
+  showSensors,
+  dataTable,
+  dataTableRequested
+) {
   let formatDate = new Date(date.toString().split('GMT')[0] + ' UTC').toISOString()
   let result = await eel.get_bounce_signals_data(
     templateSignal,

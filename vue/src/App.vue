@@ -28,6 +28,14 @@ export default {
       {
         href: '/bounce_signals',
         title: 'Дребезг сигналов'
+      },
+      {
+        href: '/signals_report',
+        title: 'Срезы сигналов'
+      },
+      {
+        href: '/grid_report',
+        title: 'Сетка сигналов'
       }
     ]
 

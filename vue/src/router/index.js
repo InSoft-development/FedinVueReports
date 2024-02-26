@@ -28,6 +28,16 @@ const router = createRouter({
       path: '/bounce_signals',
       name: 'BounceSignals',
       component: () => import('../views/BounceSignals.vue')
+    },
+    {
+      path: '/signals_report',
+      name: 'SignalsReport',
+      component: () => import('../views/SignalsReport.vue')
+    },
+    {
+      path: '/grid_report',
+      name: 'GridReport',
+      component: () => import('../views/GridReport.vue')
     }
   ]
 })

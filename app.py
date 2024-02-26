@@ -438,7 +438,7 @@ def get_discrete_grid_data(kks, date_begin, date_end, interval, dimension):
     logger.info("get OPC_UA")
     logger.info(command_string_binary)
 
-    eel.setProgressBarAnalogSignals(5)
+    eel.setProgressBarDiscreteSignals(5)
 
     args = command_string_binary
     try:

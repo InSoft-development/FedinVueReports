@@ -31,7 +31,7 @@ export default {
       dataTableRequested.value = false
       dataTableStartRequested.value = true
       dateTimeBeginReport.value = new Date().toLocaleString()
-      if (!dateTime.value || (templateText.value === '')) {
+      if (!dateTime.value || templateText.value === '') {
         alert('Не заполнены параметры запроса!')
         return
       }
@@ -39,7 +39,15 @@ export default {
       progressBarBounceSignalsActive.value = true
       progressBarBounceSignals.value = '0'
 
-      await getBounceSignals(templateText.value, dateTime.value, interval.value, intervalRadio.value, countShowSensors.value, dataTable, dataTableRequested)
+      await getBounceSignals(
+        templateText.value,
+        dateTime.value,
+        interval.value,
+        intervalRadio.value,
+        countShowSensors.value,
+        dataTable,
+        dataTableRequested
+      )
 
       dateTimeEndReport.value = new Date().toLocaleString()
       progressBarBounceSignals.value = '100'
@@ -207,16 +215,8 @@ export default {
             showGridlines="true"
             tableStyle="min-width: 50rem"
           >
-            <Column
-              field="Наименование датчика"
-              header="Наименование датчика"
-              sortable
-            ></Column>
-            <Column
-              field="Частота"
-              header="Частота"
-              sortable
-            ></Column>
+            <Column field="Наименование датчика" header="Наименование датчика" sortable></Column>
+            <Column field="Частота" header="Частота" sortable></Column>
           </DataTable>
         </div>
       </div>

@@ -1,5 +1,7 @@
 <script>
+import { FilterMatchMode } from 'primevue/api'
 import Multiselect from '@vueform/multiselect'
+
 import { ref, onMounted } from 'vue'
 import { getAnalogKKS, getAnalogGrid } from '../stores'
 
@@ -36,6 +38,8 @@ export default {
     const dataTableRequested = ref(false)
     const dataTableStartRequested = ref(false)
 
+    const filters = ref(null)
+
     onMounted(async () => {
       await getAnalogKKS(analogSensors)
     })
@@ -65,12 +69,20 @@ export default {
 
       columnsTable.value = []
       columnsTableArrayOfArray.value = []
-      let codeTableArray = Array()
-      let columnsTableArray = [{'field': "Метка времени", 'header': "Метка времени"}]
 
-      for (const [index, element] of chosenSensors.value.entries()){
-        codeTableArray.push({'№': index, 'Обозначение сигнала': element})
-        columnsTableArray.push({'field': String(index), 'header': String(index)})
+      filters.value = {
+        'Метка времени': {
+          value: null,
+          matchMode: FilterMatchMode.STARTS_WITH
+        }
+      }
+      let codeTableArray = Array()
+      let columnsTableArray = [{ field: 'Метка времени', header: 'Метка времени' }]
+
+      for (const [index, element] of chosenSensors.value.entries()) {
+        codeTableArray.push({ '№': index, 'Обозначение сигнала': element })
+        columnsTableArray.push({ field: String(index), header: String(index) })
+        filters.value[index] = { value: null, matchMode: FilterMatchMode.STARTS_WITH }
       }
 
       dataCodeTable.value = codeTableArray
@@ -78,17 +90,32 @@ export default {
 
       progressBarAnalogSignalsActive.value = true
       progressBarAnalogSignals.value = '0'
-      await getAnalogGrid(chosenSensors.value, dateTimeBegin.value, dateTimeEnd.value, interval.value, intervalRadio.value,  dataTable, dataTableRequested, dataTableStatus)
+      await getAnalogGrid(
+        chosenSensors.value,
+        dateTimeBegin.value,
+        dateTimeEnd.value,
+        interval.value,
+        intervalRadio.value,
+        dataTable,
+        dataTableRequested,
+        dataTableStatus
+      )
 
-      countOfDataTable.value = Math.ceil(chosenSensors.value.length / 10)
+      // countOfDataTable.value = Math.ceil(chosenSensors.value.length / 10)
+      countOfDataTable.value = Math.ceil(chosenSensors.value.length / 5)
 
       if (countOfDataTable.value === 1) columnsTableArrayOfArray.value.push(columnsTableArray)
       else {
-        for (let i = 0; i < countOfDataTable.value; i++){
-          if (i === 0)  columnsTableArrayOfArray.value.push(columnsTable.value.slice(0, 11))
+        for (let i = 0; i < countOfDataTable.value; i++) {
+          // if (i === 0) columnsTableArrayOfArray.value.push(columnsTable.value.slice(0, 11))
+          if (i === 0) columnsTableArrayOfArray.value.push(columnsTable.value.slice(0, 6))
           else {
-            columnsTableArrayOfArray.value.push(columnsTable.value.slice(i * 10 + 1, i * 10 + 11))
-            columnsTableArrayOfArray.value[i].unshift({'field': "Метка времени", 'header': "Метка времени"})
+            // columnsTableArrayOfArray.value.push(columnsTable.value.slice(i * 10 + 1, i * 10 + 11))
+            columnsTableArrayOfArray.value.push(columnsTable.value.slice(i * 5 + 1, i * 5 + 6))
+            columnsTableArrayOfArray.value[i].unshift({
+              field: 'Метка времени',
+              header: 'Метка времени'
+            })
           }
         }
       }
@@ -121,7 +148,9 @@ export default {
     function statusClass(index, field) {
       return [
         {
-          'bg-danger text-white': applicationStore.badCode.includes(dataTableStatus.value[index][String(field)]),
+          'bg-danger text-white': applicationStore.badCode.includes(
+            dataTableStatus.value[index][String(field)]
+          ),
           'bg-warning text-white': dataTableStatus.value[index][String(field)] === 'missed'
         }
       ]
@@ -148,6 +177,7 @@ export default {
       columnsTableArrayOfArray,
       dataTableRequested,
       dataTableStartRequested,
+      filters,
       onRequestButtonClick,
       setProgressBarAnalogSignals,
       onButtonDownloadCsvClick,
@@ -285,12 +315,7 @@ export default {
             showGridlines="true"
             tableStyle="min-width: 50rem"
           >
-            <Column
-              field="№"
-              header="№"
-              sortable
-              style="width: 35%"
-            ></Column>
+            <Column field="№" header="№" sortable style="width: 35%"></Column>
             <Column
               field="Обозначение сигнала"
               header="Обозначение сигнала"
@@ -301,23 +326,11 @@ export default {
         </div>
       </div>
       <div class="row" style="padding-bottom: 20px">
-<!--        <div class="card" v-if="dataTableRequested">-->
-<!--          <DataTable-->
-<!--            :value="dataTable"-->
-<!--            scrollable="true"-->
-<!--            scrollHeight="1000px"-->
-<!--            columnResizeMode="fit"-->
-<!--            showGridlines="true"-->
-<!--            :virtualScrollerOptions="{ itemSize: 100 }"-->
-<!--            tableStyle="min-width: 50rem"-->
-<!--          >-->
-<!--            <Column v-for="col of columnsTable" :key="col.field" :field="col.field" :header="col.header" sortable style="width: 10%"></Column>-->
-<!--          </DataTable>-->
-<!--        </div>-->
         <template v-for="i in countOfDataTable">
           <div style="padding-bottom: 20px">
             <div class="card" v-if="dataTableRequested">
               <DataTable
+                v-model:filters="filters"
                 :value="dataTable"
                 scrollable="true"
                 scrollHeight="1000px"
@@ -325,12 +338,29 @@ export default {
                 showGridlines="true"
                 :virtualScrollerOptions="{ itemSize: 100 }"
                 tableStyle="min-width: 50rem"
+                dataKey="Метка времени"
+                filterDisplay="row"
               >
-                <Column v-for="col of columnsTableArrayOfArray[i-1]" :key="col.field" :field="col.field" :header="col.header" sortable style="width: 10%">
+                <Column
+                  v-for="col of columnsTableArrayOfArray[i - 1]"
+                  :key="col.field"
+                  :field="col.field"
+                  :header="col.header"
+                  sortable
+                  v-bind:style="[col.field === 'Метка времени' ? { width: '20%' } : null]"
+                >
                   <template #body="slotProps">
                     <div :class="statusClass(slotProps.index, slotProps.field)">
                       {{ slotProps.data[slotProps.field] }}
                     </div>
+                  </template>
+                  <template #filter="{ filterModel, filterCallback }">
+                    <InputText
+                      v-model="filterModel.value"
+                      type="text"
+                      @input="filterCallback()"
+                      class="p-column-filter"
+                    />
                   </template>
                 </Column>
               </DataTable>
