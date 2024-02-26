@@ -91,3 +91,23 @@ export async function getDiscreteGrid(chosenSensors, dateBegin, dateEnd, interva
     dataTableRequested.value = true
   }
 }
+
+export async function getBounceSignals(templateSignal, date, interval, dimension, showSensors,  dataTable, dataTableRequested) {
+  let formatDate = new Date(date.toString().split('GMT')[0] + ' UTC').toISOString()
+  let result = await eel.get_bounce_signals_data(
+    templateSignal,
+    formatDate,
+    interval,
+    dimension,
+    showSensors
+  )()
+  if (typeof result === 'string') {
+    dataTableRequested.value = false
+    alert(result)
+  }
+  if (Array.isArray(result)) {
+    dataTable.value = result
+    dataTableRequested.value = true
+    console.log(dataTable.value)
+  }
+}

@@ -1,6 +1,6 @@
 <script>
-import { ref, onMounted } from 'vue'
-import { getDiscreteKKSByMask } from '../stores'
+import { ref } from 'vue'
+import { getBounceSignals } from '../stores'
 
 export default {
   name: 'BounceSignals',
@@ -10,16 +10,46 @@ export default {
     const dateTime = ref()
     const disableTime = ref(false)
 
+    const dateTimeBeginReport = ref()
+    const dateTimeEndReport = ref()
+
     const interval = ref(5)
     const intervalRadio = ref('minute')
+
+    const progressBarBounceSignals = ref('0')
+    const progressBarBounceSignalsActive = ref(false)
 
     const countShowSensors = ref(10)
 
     const currentDateChecked = ref(false)
 
-    function onRequestButtonClick() {
-      if (!dateTime.value) alert('Не заполнены параметры запроса!')
+    const dataTable = ref()
+    const dataTableRequested = ref(false)
+    const dataTableStartRequested = ref(false)
+
+    async function onRequestButtonClick() {
+      dataTableRequested.value = false
+      dataTableStartRequested.value = true
+      dateTimeBeginReport.value = new Date().toLocaleString()
+      if (!dateTime.value || (templateText.value === '')) {
+        alert('Не заполнены параметры запроса!')
+        return
+      }
+
+      progressBarBounceSignalsActive.value = true
+      progressBarBounceSignals.value = '0'
+
+      await getBounceSignals(templateText.value, dateTime.value, interval.value, intervalRadio.value, countShowSensors.value, dataTable, dataTableRequested)
+
+      dateTimeEndReport.value = new Date().toLocaleString()
+      progressBarBounceSignals.value = '100'
+      progressBarBounceSignalsActive.value = true
     }
+
+    function setProgressBarBounceSignals(count) {
+      progressBarBounceSignals.value = String(count)
+    }
+    window.eel.expose(setProgressBarBounceSignals, 'setProgressBarBounceSignals')
 
     function onChangeCheckbox() {
       if (!disableTime.value) dateTime.value = new Date()
@@ -30,11 +60,19 @@ export default {
       templateText,
       dateTime,
       disableTime,
+      dateTimeBeginReport,
+      dateTimeEndReport,
       interval,
       intervalRadio,
+      progressBarBounceSignals,
+      progressBarBounceSignalsActive,
       countShowSensors,
       currentDateChecked,
+      dataTable,
+      dataTableRequested,
+      dataTableStartRequested,
       onRequestButtonClick,
+      setProgressBarBounceSignals,
       onChangeCheckbox
     }
   }
@@ -151,6 +189,38 @@ export default {
           <Button @click="onRequestButtonClick">Запрос</Button>
         </div>
       </div>
+      <div class="row" v-if="dataTableStartRequested">
+        Старт построения отчета: {{ dateTimeBeginReport }}
+      </div>
+      <div class="row" v-if="progressBarBounceSignalsActive">
+        <div class="col">
+          <ProgressBar :value="progressBarBounceSignals"></ProgressBar>
+        </div>
+      </div>
+      <div class="row" style="padding-bottom: 20px">
+        <div class="card" v-if="dataTableRequested">
+          <DataTable
+            :value="dataTable"
+            scrollable="true"
+            scrollHeight="1000px"
+            columnResizeMode="fit"
+            showGridlines="true"
+            tableStyle="min-width: 50rem"
+          >
+            <Column
+              field="Наименование датчика"
+              header="Наименование датчика"
+              sortable
+            ></Column>
+            <Column
+              field="Частота"
+              header="Частота"
+              sortable
+            ></Column>
+          </DataTable>
+        </div>
+      </div>
+      <div class="row" v-if="dataTableRequested">Отчет: {{ dateTimeEndReport }}</div>
     </div>
   </div>
 </template>

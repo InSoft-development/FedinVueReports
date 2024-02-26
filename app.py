@@ -491,6 +491,66 @@ def get_discrete_grid_data(kks, date_begin, date_end, interval, dimension):
     return json.loads(df_report.to_json(orient='records')), json.loads(df_report_slice.to_json(orient='records'))
 
 
+@eel.expose
+def get_bounce_signals_data(template, date, interval, dimension, top):
+    logger.info(f"get_bounce_signals_data({template}, {date}, {interval}, {dimension}, {top})")
+
+    kks = get_discrete_kks_by_mask(template)
+    if not kks:
+        return f"По шаблону ничего не найдено"
+    
+    # Сохранение датчика с KKS
+    csv_tag_KKS = pd.DataFrame(data=kks)
+    csv_tag_KKS.to_csv(constants.CLIENT_KKS, index=False, header=None)
+
+    # Формирование команд для запуска бинарника historian
+    delta_interval = interval * constants.DELTA_INTERVAL_IN_SECONDS[dimension]
+    command_datetime_begin_time = (parse(date) - datetime.timedelta(seconds=delta_interval)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    command_datetime_end_time = parse(date).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    command_string = f"cd client && ./client_lesson02.so -b {command_datetime_begin_time} -e " \
+                     f"{command_datetime_end_time} -p 100 -t 1 -xw"
+
+    logger.info("get OPC_UA")
+    logger.info(command_string)
+
+    eel.setProgressBarBounceSignals(5)
+
+    args = command_string
+    try:
+        subprocess.run(args, capture_output=True, shell=True, check=True)
+        eel.setProgressBarBounceSignals(10)
+    except subprocess.CalledProcessError as e:
+        logger.error(e)
+        return f"Произошла ошибка {str(e)}"
+
+    logger.info(f'client finished')
+
+    # Достаем фрейм из sqlite
+    con_current_data = sqlite3.connect(constants.CLIENT_DATA)
+    query_string = f"SELECT * from {constants.CLIENT_DYNAMIC_TABLE}"
+
+    df_sqlite = pd.read_sql_query(
+        query_string,
+        con_current_data, parse_dates=['t'])
+    con_current_data.close()
+
+    if df_sqlite.empty:
+        msg = "Не нашлось ни одного значения из выбранных датчиков. Возможно интервал слишком мал."
+        logger.info(msg)
+        return msg
+
+    # df_counts = pd.DataFrame(kks, columns=['Наименование датчика'])
+    # df_counts['Частота'] = df_sqlite['id'].value_counts()
+    df_counts = pd.DataFrame()
+    df_counts['Частота'] = df_sqlite['id'].value_counts()
+    df_counts.index.name = 'Наименование датчика'
+    df_counts['Наименование датчика'] = df_counts.index.values.tolist()
+
+    logger.info(df_counts[:int(top)])
+    return json.loads(df_counts[:int(top)].to_json(orient='records'))
+
+
 def on_close(page, sockets):
     """Callback close Eel application."""
     logger.info(page)
