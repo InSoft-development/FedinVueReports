@@ -1,9 +1,31 @@
+import { Mutex } from 'async-mutex'
+
+const mutex = new Mutex()
+
+export async function getServerConfig(configServer, checkFileActive) {
+  let result = await eel.get_server_config()()
+  configServer.value = result[0]
+  checkFileActive.value = result[1]
+}
+
 export async function getAnalogKKS(analogSensors) {
   analogSensors.value = await eel.get_analog_kks()()
 }
 
 export async function getDiscreteKKSByMask(discreteSensors, mask) {
   discreteSensors.value = await eel.get_discrete_kks_by_mask(mask)()
+}
+
+export async function getKKSFilterByMasks(options, masks) {
+  await mutex.runExclusive(async () => {
+    let masksRequestArray = Array()
+    for (let mask of masks){
+      if (!(await eel.get_kks_tag_exist(mask)()))
+        masksRequestArray.push(mask)
+    }
+    let result = await eel.get_kks_by_masks(masksRequestArray)()
+    options.value[1].options = result
+  })
 }
 
 export async function getAnalogSignals(

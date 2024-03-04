@@ -1,6 +1,7 @@
 <script>
 import { RouterLink, RouterView } from 'vue-router'
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { getServerConfig, runUpdate } from './stores'
 
 export default {
   setup() {
@@ -41,16 +42,98 @@ export default {
 
     const collapsed = ref(false)
 
+
+    const dialogConfiguratorActive = ref(false)
+    const configServer = ref('')
+
+    const statusUpdateTextArea = ref('')
+    const statusUpdateButtonActive = ref(false)
+
+    const checkFileActive = ref(false)
+
+    onMounted(async () => {
+      await getServerConfig(configServer, checkFileActive)
+      statusUpdateTextArea.value = configServer.value
+      if (!checkFileActive.value)
+        alert("Не найден файл kks_all.csv.\nСконфигурируйте клиент OPC UA и обновите файл тегов")
+    })
+
+    function onButtonDialogConfiguratorActive() {
+      dialogConfiguratorActive.value = true
+    }
+
+    async function onButtonDialogUpdate() {
+      statusUpdateButtonActive.value = true
+      statusUpdateTextArea.value = ""
+      statusUpdateTextArea.value += "Запуск обновления тегов...\n"
+      await runUpdate()
+      statusUpdateTextArea.value += "Обновление тегов закончено\n"
+      alert("Обновление тегов закончено")
+      statusUpdateButtonActive.value = false
+      checkFileActive.value = true
+    }
+
+    function setUpdateStatus(statusString) {
+      statusUpdateTextArea.value += String(statusString)
+      let textarea = document.getElementById('status-text-area')
+      textarea.scrollTop = textarea.scrollHeight
+    }
+    window.eel.expose(setUpdateStatus, 'setUpdateStatus')
+
     return {
       sidebarMenu,
-      collapsed
+      collapsed,
+      dialogConfiguratorActive,
+      configServer,
+      statusUpdateTextArea,
+      statusUpdateButtonActive,
+      checkFileActive,
+      onButtonDialogConfiguratorActive,
+      onButtonDialogUpdate,
+      setUpdateStatus
     }
   }
 }
 </script>
 
 <template>
-  <sidebar-menu v-model:collapsed="collapsed" :menu="sidebarMenu"></sidebar-menu>
+  <sidebar-menu v-model:collapsed="collapsed" :menu="sidebarMenu">
+    <template v-slot:footer v-if="!collapsed">
+      <Button @click="onButtonDialogConfiguratorActive">Конфигурация клиента OPC UA</Button>
+      <Dialog
+        v-model="dialogConfiguratorActive"
+        :visible="dialogConfiguratorActive"
+        :closable="false"
+        header="Конфигуратор клиента OPC UA"
+        position="left"
+        :modal="true"
+        :draggable="false"
+        :style="{ width: '50rem' }"
+      >
+        <div class="container">
+          <div class="row">
+            <div class="col">
+              Параметры конфигурации: {{ configServer }}
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <TextArea id="status-text-area" v-model="statusUpdateTextArea" rows="10" cols="80" readonly :style="{resize: 'none', 'overflow-y': scroll }">{{ statusUpdateTextArea }}</TextArea>
+            </div>
+          </div>
+        </div>
+        <template #footer>
+          <Button label="Отмена" icon="pi pi-times" @click="dialogConfiguratorActive = false" text :disabled="statusUpdateButtonActive" />
+          <Button
+            label="Обновить"
+            icon="pi pi-check"
+            :disabled="statusUpdateButtonActive"
+            @click="onButtonDialogUpdate"
+          />
+        </template>
+      </Dialog>
+    </template>
+  </sidebar-menu>
   <!--  <div-->
   <!--    v-if="!collapsed"-->
   <!--    class="sidebar-overlay"-->
@@ -58,7 +141,11 @@ export default {
   <!--  />-->
   <div id="content" :class="[{ collapsed: collapsed }]">
     <div class="content">
-      <div class="container">
+      <div class="container" v-if="!checkFileActive">
+        <h1>Не найден файл kks_all.csv.</h1>
+        <h1>Сконфигурируйте клиент OPC UA и обновите файл тегов.</h1>
+      </div>
+      <div class="container" v-if="checkFileActive">
         <RouterView />
       </div>
     </div>

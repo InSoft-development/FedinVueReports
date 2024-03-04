@@ -209,7 +209,7 @@ export default {
             :searchable="true"
             :create-option="false"
             :options="discreteSensors"
-            placeholder="Выберите аналоговые датчики"
+            placeholder="Выберите дискретные датчики"
             limit="-1"
             @change="onMultiselectSensorsChange"
           ></Multiselect>

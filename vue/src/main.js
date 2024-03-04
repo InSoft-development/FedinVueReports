@@ -24,6 +24,8 @@ import InputText from 'primevue/inputtext'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import ProgressBar from 'primevue/progressbar'
+import Dialog from 'primevue/dialog'
+import Textarea from 'primevue/textarea'
 
 const app = createApp(App)
 
@@ -41,5 +43,7 @@ app.component('InputText', InputText)
 app.component('DataTable', DataTable)
 app.component('Column', Column)
 app.component('ProgressBar', ProgressBar)
+app.component('Dialog', Dialog)
+app.component('Textarea', Textarea)
 
 app.mount('#app')

@@ -7,6 +7,7 @@ import plotly.express as px
 DATA_DIRECTORY = f'data{os.sep}'
 DATA_ANALOG = f'{DATA_DIRECTORY}data_AM.txt'
 DATA_DISCRETE = f'{DATA_DIRECTORY}democub_all.csv'
+DATA_KKS_ALL = f'{DATA_DIRECTORY}kks_all.csv'
 
 REPORTS_DIRECTORY = f'reports{os.sep}'
 REPORTS_CUSTOM = f'{REPORTS_DIRECTORY}custom{os.sep}'
@@ -35,6 +36,7 @@ CLIENT_KKS = f'{CLIENT_DIR}kks.csv'
 CLIENT_SLICES = f'{CLIENT_DIR}slices.csv'
 CLIENT_SLICES_STATUS = f'{CLIENT_DIR}slices_status.csv'
 CLIENT_SLICER_SCRIPT = f'{CLIENT_DIR}slicer_for_streamlit.py'
+CLIENT_SERVER_CONF = f'{CLIENT_DIR}server.conf'
 
 JINJA = f'jinja{os.sep}'
 JINJA_TEMPLATE = f'{JINJA}template{os.sep}'
@@ -60,6 +62,7 @@ QUALITY_DICT = {'BadNoCommunication': 8,
                 'GoodХОРОШ ИМИТИР': 216,
                 'GoodLocalTime': 224,
                 }
+
 QUALITY_CODE_DICT = {'8 - (BNC) - ОТКАЗ СВЯЗИ (TIMEOUT)': 'BadNoCommunication',
                      '16 - (BSF) - ОТКАЗ ПАРАМ': 'BadSensorFailure',
                      '24 - (BCF) - ОТКАЗ СВЯЗИ': 'BadCommunicationFailure',
@@ -83,6 +86,3 @@ DELTA_INTERVAL_IN_SECONDS = {'day': 86400,
 
 BACK_SEARCH_TIME_IN_HOUR = 8760  # Предельное время поиска в глубину в часах
 STEP_OF_BACK_SEARCH = 720  # Глубина поиска в архивах
-
-FEATURES_PALETTE = ['#ff7f0e', '#d62728', '#9467bd', '#52a852', '#10E8E7']
-MAIN_SIGNAL_COLOR = px.colors.qualitative.Plotly[0]

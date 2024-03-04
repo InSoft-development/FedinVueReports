@@ -2,6 +2,7 @@ import os
 import platform
 import argparse
 import sys
+import time
 
 import eel
 import shutil
@@ -42,11 +43,115 @@ def get_analog_kks():
 @eel.expose
 def get_discrete_kks_by_mask(mask):
     logger.info(f"get_discrete_kks_by_mask({mask})")
-    if mask is None:
+    if not mask:
         return []
     discrete_kks = pd.read_csv(constants.DATA_DISCRETE, header=None)
     discrete_kks = discrete_kks[discrete_kks[0].str.contains(mask, regex=True)][0].tolist()
     return discrete_kks
+
+
+@eel.expose
+def get_kks_by_masks(mask_list):
+    logger.info(f"get_kks_by_masks({mask_list})")
+    kks = KKS_ALL.copy(deep=True)
+    # kks = pd.read_csv(constants.DATA_KKS_ALL, header=None, sep=';')
+
+    if not mask_list:
+        return kks[0].tolist()[:10000]
+
+    for mask in mask_list:
+        kks = kks[kks[0].str.contains(mask, regex=True)]
+
+    return kks[0].tolist()[:10000]
+
+
+@eel.expose
+def get_kks_tag_exist(kks_tag):
+    logger.info(f"get_kks_exist({kks_tag})")
+    # kks = pd.read_csv(constants.DATA_KKS_ALL, header=None, sep=';')
+    return kks_tag in KKS_ALL[0].values
+
+
+@eel.expose
+def get_server_config():
+    logger.info(f"get_server_config()")
+    with open(constants.CLIENT_SERVER_CONF, "r") as readfile:
+        server_config = readfile.readline()
+        logger.info(server_config)
+
+    return server_config, os.path.isfile(constants.DATA_KKS_ALL)
+
+
+@eel.expose
+def update_kks_all():
+    logger.info(f"update_kks_all()")
+
+    command_kks_all_string = f"cd client && ./client -k all -c"
+    # command_kks_all_string = f"cd client && ./client -k 00_Блок_2.01_Сочинская_ТЭС_блок_2.20BAC10GS001-MR -c"
+    command_tail_kks_all_string = f"wc -l {constants.CLIENT_KKS} && tail -1 {constants.CLIENT_KKS}"
+    logger.info(f'get from OPC_UA all kks and types')
+    logger.info(command_kks_all_string)
+
+    args = command_kks_all_string
+    args_tail = command_tail_kks_all_string
+
+    try:
+        p_kks_all = subprocess.Popen(args, stdout=subprocess.PIPE, shell=True)
+        time.sleep(1)
+        while p_kks_all.poll() != 0:
+            p_tail = subprocess.Popen(args_tail, stdout=subprocess.PIPE, shell=True)
+            out, err = p_tail.communicate()
+            records = out.decode('utf-8').split('\n')
+            count = records[0].split()[0]
+            record = records[1].split(';')[0]
+            eel.setUpdateStatus(f"{count}. {record} Успех\n")
+            time.sleep(5)
+
+        eel.setUpdateStatus(f"Последняя запись\n")
+        p_tail = subprocess.Popen(args_tail, stdout=subprocess.PIPE, shell=True)
+        out, err = p_tail.communicate()
+        records = out.decode('utf-8').split('\n')
+        count = records[0].split()[0]
+        record = records[1].split(';')[0]
+        eel.setUpdateStatus(f"{count}. {record} Успех\n")
+        # with open(constants.CLIENT_KKS, "r") as kks:
+        #     for count, line in enumerate(iter(kks)):
+        #         if count % 1000 == 0:
+        #             eel.setUpdateStatus(f"{count + 1}. {line.split(';')[0]} Успех\n...\n")
+        #             time.sleep(2)
+        #         if p_kks_all.poll() == 0:
+        #             eel.setUpdateStatus(f"{count + 1}. {line.split(';')[0]} Успех\n")
+        #             break
+
+
+            # logger.info(p_kks_all.stdout.readline())
+            # args_tail = command_tail_kks_all_string
+            # p_tail = subprocess.Popen(args_tail, stdout=subprocess.PIPE, shell=True)
+            # out, err = p_tail.communicate()
+            # record = out.decode('utf-8')
+            # eel.setUpdateStatus(f"{record.split(';')[0]}\n")
+    except subprocess.CalledProcessError as e:
+        logger.error(e)
+        eel.setUpdateStatus(f"Ошибка: {e}\n")
+
+    # time.sleep(5)
+    shutil.copy(constants.CLIENT_KKS, constants.DATA_KKS_ALL)
+    # Пытаемся загрузить kks_all.csv если он существует
+    try:
+        KKS_ALL = pd.read_csv(constants.DATA_KKS_ALL + 'd', header=None, sep=';')
+    except FileNotFoundError as e:
+        logger.info(e)
+
+
+    # try:
+    #     subprocess.run(args, capture_output=True, shell=True, check=True)
+    # except subprocess.CalledProcessError as e:
+    #     logger.error(e)
+    #     return f"Произошла ошибка {str(e)}"
+
+    # for i in range(100):
+    #     time.sleep(1)
+    #     eel.setUpdateStatus(str(i+1)+'\n')
 
 
 @eel.expose
@@ -80,7 +185,7 @@ def get_analog_signals_data(kks, quality, date):
         # Формирование команды для запуска бинарника historian
         command_datetime_begin_time = (parse(date) - datetime.timedelta(seconds=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
         command_datetime_end_time = parse(date).strftime("%Y-%m-%dT%H:%M:%SZ")
-        command_string = f"cd client && ./client_lesson02.so -b {command_datetime_begin_time} -e " \
+        command_string = f"cd client && ./client -b {command_datetime_begin_time} -e " \
                          f"{command_datetime_end_time} -p 100 -t 10000 -r -xw"
 
         logger.info(f'get OPC_UA: {element[0]}->{element[1]}')
@@ -120,7 +225,7 @@ def get_analog_signals_data(kks, quality, date):
                     command_datetime_end_time = (parse(date) - datetime.timedelta(hours=delta_prev)).strftime(
                         "%Y-%m-%dT%H:%M:%SZ")
 
-                    command_string = f"cd client && ./client_lesson02.so -b {command_datetime_begin_time} -e " \
+                    command_string = f"cd client && ./client -b {command_datetime_begin_time} -e " \
                                      f"{command_datetime_end_time} -p 100 -t 10000 -xw"
                     logger.info(f'get OPC_UA: {element[0]}->{element[1]}')
                     logger.info(command_string)
@@ -224,7 +329,7 @@ def get_discrete_signals_data(kks, values, quality, date):
         # Формирование команды для запуска бинарника historian
         command_datetime_begin_time = (parse(date) - datetime.timedelta(seconds=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
         command_datetime_end_time = parse(date).strftime("%Y-%m-%dT%H:%M:%SZ")
-        command_string = f"cd client && ./client_lesson02.so -b {command_datetime_begin_time} -e " \
+        command_string = f"cd client && ./client -b {command_datetime_begin_time} -e " \
                          f"{command_datetime_end_time} -p 100 -t 10000 -r -xw"
 
         logger.info(f'get OPC_UA: {element[0]}->{element[1]}->{element[2]}')
@@ -264,7 +369,7 @@ def get_discrete_signals_data(kks, values, quality, date):
                     command_datetime_end_time = (parse(date) - datetime.timedelta(hours=delta_prev)).strftime(
                         "%Y-%m-%dT%H:%M:%SZ")
 
-                    command_string = f"cd client && ./client_lesson02.so -b {command_datetime_begin_time} -e " \
+                    command_string = f"cd client && ./client -b {command_datetime_begin_time} -e " \
                                      f"{command_datetime_end_time} -p 100 -t 10000 -xw"
                     logger.info(f'get OPC_UA: {element[0]}->{element[1]}->{element[2]}')
                     logger.info(command_string)
@@ -350,7 +455,7 @@ def get_analog_grid_data(kks, date_begin, date_end, interval, dimension):
     command_datetime_begin_time_binary = parse(date_begin).strftime("%Y-%m-%dT%H:%M:%SZ")
     command_datetime_end_time_binary = parse(date_end).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    command_string_binary = f"cd client && ./client_lesson02.so -b {command_datetime_begin_time_binary} -e " \
+    command_string_binary = f"cd client && ./client -b {command_datetime_begin_time_binary} -e " \
                             f"{command_datetime_end_time_binary} -p 100 -t 10000 -rxw"
 
     delta_interval = interval * constants.DELTA_INTERVAL_IN_SECONDS[dimension]
@@ -428,7 +533,7 @@ def get_discrete_grid_data(kks, date_begin, date_end, interval, dimension):
     command_datetime_begin_time_binary = parse(date_begin).strftime("%Y-%m-%dT%H:%M:%SZ")
     command_datetime_end_time_binary = parse(date_end).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    command_string_binary = f"cd client && ./client_lesson02.so -b {command_datetime_begin_time_binary} -e " \
+    command_string_binary = f"cd client && ./client -b {command_datetime_begin_time_binary} -e " \
                             f"{command_datetime_end_time_binary} -p 100 -t 10000 -rxw"
 
     delta_interval = interval * constants.DELTA_INTERVAL_IN_SECONDS[dimension]
@@ -508,7 +613,7 @@ def get_bounce_signals_data(template, date, interval, dimension, top):
     command_datetime_begin_time = (parse(date) - datetime.timedelta(seconds=delta_interval)).strftime("%Y-%m-%dT%H:%M:%SZ")
     command_datetime_end_time = parse(date).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    command_string = f"cd client && ./client_lesson02.so -b {command_datetime_begin_time} -e " \
+    command_string = f"cd client && ./client -b {command_datetime_begin_time} -e " \
                      f"{command_datetime_end_time} -p 100 -t 1 -xw"
 
     logger.info("get OPC_UA")
@@ -601,6 +706,13 @@ if __name__ == '__main__':
         exit(0)
 
     check_correct_application_structure()
+
+    # Пытаемся загрузить kks_all.csv если он существует
+    try:
+        KKS_ALL = pd.read_csv(constants.DATA_KKS_ALL, header=None, sep=';')
+    except FileNotFoundError as e:
+        logger.info(e)
+        KKS_ALL = pd.DataFrame()
 
     # Pass any second argument to enable debugging
     start_eel(develop=len(sys.argv) == 2)
