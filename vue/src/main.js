@@ -26,6 +26,7 @@ import Column from 'primevue/column'
 import ProgressBar from 'primevue/progressbar'
 import Dialog from 'primevue/dialog'
 import Textarea from 'primevue/textarea'
+import Skeleton from 'primevue/skeleton'
 
 const app = createApp(App)
 
@@ -45,5 +46,6 @@ app.component('Column', Column)
 app.component('ProgressBar', ProgressBar)
 app.component('Dialog', Dialog)
 app.component('Textarea', Textarea)
+app.component('Skeleton', Skeleton)
 
 app.mount('#app')

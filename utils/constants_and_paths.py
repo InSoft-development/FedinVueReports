@@ -23,6 +23,8 @@ CSV_DISCRETE_SLICES = f'{REPORTS_DIRECTORY}discrete_slice.csv'
 CSV_ANALOG_GRID = f'{REPORTS_DIRECTORY}analog_grid.csv'
 CSV_DISCRETE_GRID = f'{REPORTS_DIRECTORY}discrete_grid.csv'
 CSV_BOUNCE = f'{REPORTS_DIRECTORY}bounce.csv'
+CSV_SIGNALS = f'{REPORTS_DIRECTORY}signals_slice.csv'
+CSV_GRID = f'{REPORTS_DIRECTORY}grid.csv'
 
 WEB_DIR = f'web{os.sep}'
 

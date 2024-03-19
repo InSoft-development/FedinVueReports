@@ -1,10 +1,351 @@
 <script>
-import { ref } from 'vue'
+import { FilterMatchMode } from 'primevue/api'
+import Multiselect from '@vueform/multiselect'
+
+import { ref, onMounted, onUnmounted, onBeforeUnmount } from 'vue'
+import { getKKSFilterByMasks, getTypesOfSensors, getKKSByMasksForTable, getGrid, cancelGrid } from '../stores'
+
+import { useApplicationStore } from '../stores/applicationStore'
 
 export default {
   name: 'GridReport',
+  components: { Multiselect },
   setup() {
-    return {}
+    const applicationStore = useApplicationStore()
+
+    const typesOfSensorsDataValue = ref(null)
+    const typesOfSensorsDataOptions = ref([
+      {
+        label: 'Выбрать все типы данных',
+        options: []
+      }
+    ])
+    let chosenTypesOfSensorsData = []
+
+    const sensorsAndTemplateValue = ref([])
+    const sensorsAndTemplateOptions = ref([
+      {
+        label: 'Шаблоны',
+        options: [
+          '.*\\.state\\..*',
+          '.*-icCV_.*\\.state\\..*',
+          'Sochi2\\.GT\\.AM\\..*',
+          'Sochi2\\..*',
+          'Unit2\\..*'
+        ]
+      },
+      {
+        label: 'Теги KKS сигналов',
+        options: []
+      }
+    ])
+    let chosenSensorsAndTemplate = []
+    const disabledSensorsAndTemplate = ref(true)
+    const isLoadingSensorsAndTemplate = ref(false)
+
+    const dateTimeBegin = ref()
+    const dateTimeEnd = ref()
+
+    const dateTimeBeginReport = ref()
+    const dateTimeEndReport = ref()
+
+    const interval = ref(5)
+    const intervalRadio = ref('minute')
+
+    const progressBarGrid = ref('0')
+    const progressBarGridActive = ref(false)
+
+    const dataCodeTable = ref()
+    // const virtualDataCodeTable = ref()
+    const dataTable = ref()
+    // const virtualDataTable = ref()
+    const dataTableStatus = ref()
+    const columnsTable = ref([])
+    const countOfDataTable = ref(0)
+    const columnsTableArrayOfArray = ref([])
+    const dataTableRequested = ref(false)
+    const dataTableStartRequested = ref(false)
+
+    const filters = ref(null)
+
+    let delayTimer = null
+
+    // const lazyLoadingCodeTable = ref(false)
+    // const lazyLoadingDataTable = ref(false)
+
+    const loadCodeTableLazyTimeout = ref()
+    const loadDataTableLazyTimeout = ref()
+
+    onMounted(async () => {
+      await getTypesOfSensors(typesOfSensorsDataOptions)
+
+      window.addEventListener("beforeunload",  async (event) => {
+        await cancelGrid()
+      })
+    })
+
+    onBeforeUnmount(async () => {
+      window.removeEventListener("beforeunload", async (event) => {})
+    })
+
+    onUnmounted(async () => {
+      await cancelGrid()
+    })
+
+    async function onTypesOfSensorsDataChange(val) {
+      chosenTypesOfSensorsData = val
+      if (!chosenTypesOfSensorsData.length) {
+        disabledSensorsAndTemplate.value = true
+      } else {
+        disabledSensorsAndTemplate.value = true
+        isLoadingSensorsAndTemplate.value = true
+        await getKKSFilterByMasks(
+          sensorsAndTemplateOptions,
+          chosenTypesOfSensorsData,
+          chosenSensorsAndTemplate
+        )
+        isLoadingSensorsAndTemplate.value = false
+        disabledSensorsAndTemplate.value = false
+      }
+    }
+
+    async function onMultiselectSensorsAndTemplateChange(val) {
+      console.log('onMultiselectSensorsAndTemplateChange')
+      disabledSensorsAndTemplate.value = true
+      isLoadingSensorsAndTemplate.value = true
+      chosenSensorsAndTemplate = val
+      await getKKSFilterByMasks(
+        sensorsAndTemplateOptions,
+        chosenTypesOfSensorsData,
+        chosenSensorsAndTemplate
+      )
+      isLoadingSensorsAndTemplate.value = false
+      disabledSensorsAndTemplate.value = false
+    }
+
+    function onMultiselectSensorsAndTemplateCreateTag(query) {
+      sensorsAndTemplateOptions.value[0].options.push(query['value'])
+      sensorsAndTemplateValue.value.push(query['value'])
+    }
+
+    async function onMultiselectSensorsAndTemplateSearchChange(query) {
+      // Последовательная фильтрация по регуляркам
+      clearTimeout(delayTimer)
+      delayTimer = setTimeout(async function () {
+        isLoadingSensorsAndTemplate.value = true
+        let chosenFilterSensorsAndTemplate = chosenSensorsAndTemplate.slice()
+        chosenFilterSensorsAndTemplate.push(String(query))
+        await getKKSFilterByMasks(
+          sensorsAndTemplateOptions,
+          chosenTypesOfSensorsData,
+          chosenFilterSensorsAndTemplate
+        )
+        isLoadingSensorsAndTemplate.value = false
+      }, 1000)
+      // Можно заменить на фильтр только по вводимой регулярке
+      // await getKKSFilterByMasks(sensorsAndTemplateOptions, chosenTypesOfSensorsData, query)
+    }
+
+    async function onMultiselectSensorsAndTemplateSelect(val, option) {
+      console.log('onMultiselectSensorsAndTemplateSelect')
+      console.log(val)
+      console.log(option)
+    }
+
+    async function onMultiselectSensorsAndTemplateDeselect(val, option) {
+      console.log('onMultiselectSensorsAndTemplateDeselect')
+      console.log(val)
+      console.log(option)
+    }
+
+    async function onRequestButtonClick() {
+      dataTableRequested.value = false
+      dateTimeBeginReport.value = new Date().toLocaleString()
+      if (
+        !chosenTypesOfSensorsData.length ||
+        !chosenSensorsAndTemplate.length ||
+        !dateTimeBegin.value ||
+        !dateTimeEnd.value
+      ) {
+        alert('Не заполнены параметры запроса!')
+        return
+      }
+
+      if (dateTimeEnd.value.getTime() < dateTimeBegin.value.getTime()) {
+        alert('Дата конца должна быть больше даты начала')
+        return
+      }
+
+      if (dateTimeEnd.value.getTime() === dateTimeBegin.value.getTime()) {
+        alert('Дата конца не должна совпадать с датой начала')
+        return
+      }
+
+      dataTableStartRequested.value = true
+
+      columnsTable.value = []
+      columnsTableArrayOfArray.value = []
+
+      filters.value = {
+        'Метка времени': {
+          value: null,
+          matchMode: FilterMatchMode.STARTS_WITH
+        }
+      }
+      let codeTableArray = Array()
+      let columnsTableArray = [{ field: 'Метка времени', header: 'Метка времени' }]
+
+      let chosenSensors = ref([])
+      await getKKSByMasksForTable(
+        chosenSensors,
+        chosenTypesOfSensorsData,
+        chosenSensorsAndTemplate
+      )
+      console.log(chosenSensors.value)
+      for (const [index, element] of chosenSensors.value.entries()) {
+        codeTableArray.push({ '№': index, 'Обозначение сигнала': element })
+        columnsTableArray.push({ field: String(index), header: String(index) })
+        filters.value[index] = { value: null, matchMode: FilterMatchMode.STARTS_WITH }
+      }
+
+      dataCodeTable.value = codeTableArray
+      columnsTable.value = columnsTableArray
+
+      progressBarGridActive.value = true
+      progressBarGrid.value = '0'
+
+      await getGrid(
+        chosenSensors.value,
+        dateTimeBegin.value,
+        dateTimeEnd.value,
+        interval.value,
+        intervalRadio.value,
+        dataTable,
+        dataTableRequested,
+        dataTableStatus
+      )
+
+      countOfDataTable.value = Math.ceil(chosenSensors.value.length / 5)
+
+      if (countOfDataTable.value === 1) columnsTableArrayOfArray.value.push(columnsTableArray)
+      else {
+        for (let i = 0; i < countOfDataTable.value; i++) {
+          if (i === 0) columnsTableArrayOfArray.value.push(columnsTable.value.slice(0, 6))
+          else {
+            columnsTableArrayOfArray.value.push(columnsTable.value.slice(i * 5 + 1, i * 5 + 6))
+            columnsTableArrayOfArray.value[i].unshift({
+              field: 'Метка времени',
+              header: 'Метка времени'
+            })
+          }
+        }
+      }
+
+      dateTimeEndReport.value = new Date().toLocaleString()
+      progressBarGrid.value = '100'
+      progressBarGridActive.value = false
+    }
+
+    function onInterruptRequestButtonClick() {
+      cancelGrid()
+      dataTableStartRequested.value = false
+      progressBarGridActive.value = false
+    }
+
+    function setProgressBarGrid(count) {
+      progressBarGrid.value = String(count)
+    }
+    window.eel.expose(setProgressBarGrid, 'setProgressBarGrid')
+
+    function onButtonDownloadCsvClick() {
+      const link = document.createElement('a')
+      const pathGridCsv = 'grid.csv'
+      link.setAttribute('download', pathGridCsv)
+      link.setAttribute('type', 'application/octet-stream')
+      link.setAttribute('href', 'grid.csv')
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    }
+
+    function onButtonDownloadPdfClick() {
+      return
+    }
+
+    function statusClass(index, field) {
+      return [
+        {
+          'bg-danger text-white': applicationStore.badCode.includes(
+            dataTableStatus.value[index][String(field)]
+          ),
+          'bg-warning text-white': dataTableStatus.value[index][String(field)] === 'missed' || dataTableStatus.value[index][String(field)] === 'NaN'
+        }
+      ]
+    }
+
+    // const loadCodeTableLazy = (event) => {
+    //   !lazyLoadingCodeTable.value && (lazyLoadingCodeTable.value = true)
+    //
+    //   if (loadCodeTableLazyTimeout.value) {
+    //     clearTimeout(loadCodeTableLazyTimeout.value)
+    //   }
+    //
+    //   loadCodeTableLazyTimeout.value = setTimeout(() => {
+    //     let _virtualDataCodeTable = [...dataCodeTable.value]
+    //     let { first, last } = event
+    //
+    //     const loadedDataCodeTable = dataCodeTable.value.slice(first, last)
+    //     Array.prototype.splice.apply(_virtualDataCodeTable, [...[first, last - first], ...loadedDataCodeTable])
+    //
+    //     virtualDataCodeTable.value = _virtualDataCodeTable
+    //     lazyLoadingCodeTable.value = false
+    //
+    //   }, 1000)
+    // }
+
+    // const loadDataTableLazy = (event) => {
+    //   !lazyLoadingDataTable.value && (lazyLoadingDataTable.value = true)
+    // }
+
+    return {
+      typesOfSensorsDataValue,
+      typesOfSensorsDataOptions,
+      chosenTypesOfSensorsData,
+      onTypesOfSensorsDataChange,
+      sensorsAndTemplateValue,
+      sensorsAndTemplateOptions,
+      chosenSensorsAndTemplate,
+      disabledSensorsAndTemplate,
+      isLoadingSensorsAndTemplate,
+      onMultiselectSensorsAndTemplateChange,
+      onMultiselectSensorsAndTemplateCreateTag,
+      onMultiselectSensorsAndTemplateSearchChange,
+      onMultiselectSensorsAndTemplateSelect,
+      onMultiselectSensorsAndTemplateDeselect,
+      dateTimeBegin,
+      dateTimeEnd,
+      dateTimeBeginReport,
+      dateTimeEndReport,
+      interval,
+      intervalRadio,
+      progressBarGrid,
+      progressBarGridActive,
+      dataCodeTable,
+      dataTable,
+      dataTableStatus,
+      columnsTable,
+      countOfDataTable,
+      columnsTableArrayOfArray,
+      dataTableRequested,
+      dataTableStartRequested,
+      filters,
+      onRequestButtonClick,
+      onInterruptRequestButtonClick,
+      setProgressBarGrid,
+      onButtonDownloadCsvClick,
+      onButtonDownloadPdfClick,
+      statusClass,
+    }
   }
 }
 </script>
@@ -12,7 +353,221 @@ export default {
 <template>
   <div>
     <h1 align="center">Сетка сигналов</h1>
-    <div class="container">TEST GRID</div>
+    <div class="container">
+      <div class="row">
+        <div class="col" style="padding-bottom: 20px">
+          <label for="typesOfSensorsDataGridReport">Выберите тип данных тегов</label>
+          <Multiselect
+            id="typesOfSensorsDataGridReport"
+            v-model="typesOfSensorsDataValue"
+            mode="tags"
+            :close-on-select="false"
+            :groups="true"
+            :options="typesOfSensorsDataOptions"
+            :searchable="true"
+            :create-option="false"
+            placeholder="Выберите тип данных тегов"
+            limit="-1"
+            :can-clear="false"
+            @change="onTypesOfSensorsDataChange"
+          ></Multiselect>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col" style="padding-bottom: 20px">
+          <label for="sensorsAndTemplateGridReport"
+            >Выберите шаблон или теги сигналов, проходящие по условию введенного шаблона</label
+          >
+          <Multiselect
+            id="sensorsAndTemplateGridReport"
+            v-model="sensorsAndTemplateValue"
+            mode="tags"
+            :disabled="disabledSensorsAndTemplate"
+            :close-on-select="false"
+            :groups="true"
+            :options="sensorsAndTemplateOptions"
+            :searchable="true"
+            :create-option="true"
+            :filter-results="false"
+            :loading="isLoadingSensorsAndTemplate"
+            placeholder="Выберите шаблон или теги сигналов"
+            limit="-1"
+            appendNewOption="false"
+            @change="onMultiselectSensorsAndTemplateChange"
+            @create="onMultiselectSensorsAndTemplateCreateTag"
+            @search-change="onMultiselectSensorsAndTemplateSearchChange"
+            @select="onMultiselectSensorsAndTemplateSelect"
+            @deselect="onMultiselectSensorsAndTemplateDeselect"
+          ></Multiselect>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col">
+          <label for="calendarDateBeginGridReport">Введите дату начала</label>
+        </div>
+        <div class="col">
+          <label for="calendarDateEndGridReport">Введите дату конца</label>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col" style="padding-bottom: 20px">
+          <Calendar
+            id="calendarDateBeginGridReport"
+            v-model="dateTimeBegin"
+            show-time
+            hour-format="24"
+            show-seconds="true"
+            placeholder="ДД/ММ/ГГ ЧЧ:ММ:СС"
+            manualInput="false"
+            date-format="dd/mm/yy"
+            show-icon
+            show-button-bar
+          >
+          </Calendar>
+        </div>
+        <div class="col" style="padding-bottom: 20px">
+          <Calendar
+            id="calendarDateEndGridReport"
+            v-model="dateTimeEnd"
+            show-time
+            hour-format="24"
+            show-seconds="true"
+            placeholder="ДД/ММ/ГГ ЧЧ:ММ:СС"
+            manualInput="false"
+            date-format="dd/mm/yy"
+            show-icon
+            show-button-bar
+          >
+          </Calendar>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col">
+          <label for="intervalGridReport">Интервал</label>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col" style="padding-bottom: 20px">
+          <InputNumber
+            v-model="interval"
+            id="intervalGridReport"
+            input-id="interval"
+            mode="decimal"
+            show-buttons
+            :min="1"
+            :step="1"
+            :allow-empty="false"
+            :aria-label="interval"
+          >
+          </InputNumber>
+        </div>
+        <div class="col">
+          <RadioButton v-model="intervalRadio" inputId="day" name="day" value="day" />
+          <label for="day">&nbsp;&nbsp;День</label>
+        </div>
+        <div class="col">
+          <RadioButton v-model="intervalRadio" inputId="hour" name="hour" value="hour" />
+          <label for="hour">&nbsp;&nbsp;Час</label>
+        </div>
+        <div class="col">
+          <RadioButton v-model="intervalRadio" inputId="minute" name="minute" value="minute" />
+          <label for="minute">&nbsp;&nbsp;Минута</label>
+        </div>
+        <div class="col">
+          <RadioButton v-model="intervalRadio" inputId="second" name="second" value="second" />
+          <label for="second">&nbsp;&nbsp;Секунда</label>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col" style="padding-bottom: 20px">
+          <Button @click="onRequestButtonClick">Запрос</Button>
+        </div>
+        <div class="col" v-if="dataTableRequested">
+          <Button @click="onButtonDownloadPdfClick">Загрузить отчет</Button>
+        </div>
+        <div class="col" v-if="dataTableRequested">
+          <Button @click="onButtonDownloadCsvClick">Загрузить CSV</Button>
+        </div>
+      </div>
+      <div class="row" v-if="dataTableStartRequested">
+        Старт построения отчета: {{ dateTimeBeginReport }}
+      </div>
+      <div class="row" v-if="progressBarGridActive">
+        <div class="col-10 align-self-center">
+          <ProgressBar :value="progressBarGrid"></ProgressBar>
+        </div>
+        <div class="col-2">
+          <Button @click="onInterruptRequestButtonClick">Прервать запрос</Button>
+        </div>
+      </div>
+      <div class="row" style="padding-bottom: 20px">
+        <div class="card" v-if="dataTableRequested">
+          <DataTable
+            :value="dataCodeTable"
+            scrollable="true"
+            scrollHeight="1000px"
+            columnResizeMode="fit"
+            showGridlines="true"
+            :virtualScrollerOptions="{ itemSize: 50 }"
+            tableStyle="min-width: 50rem"
+          >
+            <Column field="№" header="№" sortable style="width: 35%">
+            </Column>
+            <Column
+              field="Обозначение сигнала"
+              header="Обозначение сигнала"
+              sortable
+              style="width: 30%"
+            >
+            </Column>
+          </DataTable>
+        </div>
+      </div>
+      <div class="row" style="padding-bottom: 20px">
+        <template v-for="i in countOfDataTable">
+          <div style="padding-bottom: 20px">
+            <div class="card" v-if="dataTableRequested">
+              <DataTable
+                v-model:filters="filters"
+                :value="dataTable"
+                scrollable="true"
+                scrollHeight="1000px"
+                columnResizeMode="fit"
+                showGridlines="true"
+                :virtualScrollerOptions="{ itemSize: 50 }"
+                tableStyle="min-width: 50rem"
+                dataKey="Метка времени"
+                filterDisplay="row"
+              >
+                <Column
+                  v-for="col of columnsTableArrayOfArray[i - 1]"
+                  :key="col.field"
+                  :field="col.field"
+                  :header="col.header"
+                  sortable
+                  v-bind:style="[col.field === 'Метка времени' ? { width: '20%' } : null]"
+                >
+                  <template #body="slotProps">
+                    <div :class="statusClass(slotProps.index, slotProps.field)">
+                      {{ slotProps.data[slotProps.field] }}
+                    </div>
+                  </template>
+                  <template #filter="{ filterModel, filterCallback }">
+                    <InputText
+                      v-model="filterModel.value"
+                      type="text"
+                      @input="filterCallback()"
+                      class="p-column-filter"
+                    />
+                  </template>
+                </Column>
+              </DataTable>
+            </div>
+          </div>
+        </template>
+      </div>
+      <div class="row" v-if="dataTableRequested">Отчет: {{ dateTimeEndReport }}</div>
+    </div>
   </div>
 </template>
 

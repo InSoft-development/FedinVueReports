@@ -1,7 +1,7 @@
 <script>
 import Multiselect from '@vueform/multiselect'
-import { ref, onMounted } from 'vue'
-import { getKKSFilterByMasks } from '../stores'
+import { ref, onMounted, onUnmounted, onBeforeUnmount } from 'vue'
+import { getKKSFilterByMasks, getTypesOfSensors, getSignals, cancelSignals } from '../stores'
 
 import { useApplicationStore } from '../stores/applicationStore'
 
@@ -11,21 +11,34 @@ export default {
   setup() {
     const applicationStore = useApplicationStore()
 
+    const typesOfSensorsDataValue = ref(null)
+    const typesOfSensorsDataOptions = ref([
+      {
+        label: 'Выбрать все типы данных',
+        options: []
+      }
+    ])
+    let chosenTypesOfSensorsData = []
+
     const sensorsAndTemplateValue = ref([])
-    const sensorsAndTemplateOptions = ref([{
+    const sensorsAndTemplateOptions = ref([
+      {
         label: 'Шаблоны',
-        options: ['.*\\.state\\..*',
-                  '.*-icCV_.*\\.state\\..*',
-                  'Sochi2\\.GT\\.AM\\..*',
-                  'Sochi2\\..*',
-                  'Unit2\\..*']
+        options: [
+          '.*\\.state\\..*',
+          '.*-icCV_.*\\.state\\..*',
+          'Sochi2\\.GT\\.AM\\..*',
+          'Sochi2\\..*',
+          'Unit2\\..*'
+        ]
       },
       {
         label: 'Теги KKS сигналов',
         options: []
-      }])
+      }
+    ])
     let chosenSensorsAndTemplate = []
-    const disabledSensorsAndTemplate = ref(false)
+    const disabledSensorsAndTemplate = ref(true)
     const isLoadingSensorsAndTemplate = ref(false)
 
     const qualitiesName = ref([
@@ -50,27 +63,63 @@ export default {
     const dataTableRequested = ref(false)
     const dataTableStartRequested = ref(false)
 
+    const progressBarSignals = ref('0')
+    const progressBarSignalsActive = ref(false)
+
     let delayTimer = null
 
-    // onMounted( async () => {
-    //   disabledSensorsAndTemplate.value = true
-    //   await getKKSFilterByMasks(sensorsAndTemplateOptions, chosenSensorsAndTemplate)
-    //   disabledSensorsAndTemplate.value = false
-    // })
+    onMounted(async () => {
+      await getTypesOfSensors(typesOfSensorsDataOptions)
+      // disabledSensorsAndTemplate.value = true
+      // await getKKSFilterByMasks(sensorsAndTemplateOptions, chosenTypesOfSensorsData, chosenSensorsAndTemplate)
+      // disabledSensorsAndTemplate.value = false
+      window.addEventListener("beforeunload",  async (event) => {
+        await cancelSignals()
+      })
+    })
+
+    onBeforeUnmount(async () => {
+      window.removeEventListener("beforeunload", async (event) => {})
+    })
+
+    onUnmounted(async () => {
+      await cancelSignals()
+    })
+
+    async function onTypesOfSensorsDataChange(val) {
+      chosenTypesOfSensorsData = val
+      if (!chosenTypesOfSensorsData.length) {
+        disabledSensorsAndTemplate.value = true
+      } else {
+        disabledSensorsAndTemplate.value = true
+        isLoadingSensorsAndTemplate.value = true
+        await getKKSFilterByMasks(
+          sensorsAndTemplateOptions,
+          chosenTypesOfSensorsData,
+          chosenSensorsAndTemplate
+        )
+        isLoadingSensorsAndTemplate.value = false
+        disabledSensorsAndTemplate.value = false
+      }
+    }
 
     async function onMultiselectSensorsAndTemplateChange(val) {
-      console.log("onMultiselectSensorsAndTemplateChange")
+      console.log('onMultiselectSensorsAndTemplateChange')
       disabledSensorsAndTemplate.value = true
       isLoadingSensorsAndTemplate.value = true
       chosenSensorsAndTemplate = val
-      await getKKSFilterByMasks(sensorsAndTemplateOptions, chosenSensorsAndTemplate)
+      await getKKSFilterByMasks(
+        sensorsAndTemplateOptions,
+        chosenTypesOfSensorsData,
+        chosenSensorsAndTemplate
+      )
       isLoadingSensorsAndTemplate.value = false
       disabledSensorsAndTemplate.value = false
     }
 
     function onMultiselectSensorsAndTemplateCreateTag(query) {
-      sensorsAndTemplateOptions.value[0].options.push(query["value"])
-      sensorsAndTemplateValue.value.push(query["value"])
+      sensorsAndTemplateOptions.value[0].options.push(query['value'])
+      sensorsAndTemplateValue.value.push(query['value'])
     }
 
     async function onMultiselectSensorsAndTemplateSearchChange(query) {
@@ -80,38 +129,27 @@ export default {
         isLoadingSensorsAndTemplate.value = true
         let chosenFilterSensorsAndTemplate = chosenSensorsAndTemplate.slice()
         chosenFilterSensorsAndTemplate.push(String(query))
-        await getKKSFilterByMasks(sensorsAndTemplateOptions, chosenFilterSensorsAndTemplate)
+        await getKKSFilterByMasks(
+          sensorsAndTemplateOptions,
+          chosenTypesOfSensorsData,
+          chosenFilterSensorsAndTemplate
+        )
         isLoadingSensorsAndTemplate.value = false
       }, 1000)
       // Можно заменить на фильтр только по вводимой регулярке
-      // await getKKSFilterByMasks(sensorsAndTemplateOptions, query)
+      // await getKKSFilterByMasks(sensorsAndTemplateOptions, chosenTypesOfSensorsData, query)
     }
 
     async function onMultiselectSensorsAndTemplateSelect(val, option) {
-      console.log("onMultiselectSensorsAndTemplateSelect")
+      console.log('onMultiselectSensorsAndTemplateSelect')
       console.log(val)
       console.log(option)
-      // if (!sensorsAndTemplateOptions.value[1].options.includes (val)){
-      //   disabledSensorsAndTemplate.value = true
-      //   isLoadingSensorsAndTemplate.value = true
-      //   await getKKSFilterByMasks(sensorsAndTemplateOptions, chosenSensorsAndTemplate)
-      //   isLoadingSensorsAndTemplate.value = false
-      //   disabledSensorsAndTemplate.value = false
-      // }
-
     }
 
     async function onMultiselectSensorsAndTemplateDeselect(val, option) {
-      console.log("onMultiselectSensorsAndTemplateDeselect")
+      console.log('onMultiselectSensorsAndTemplateDeselect')
       console.log(val)
       console.log(option)
-      // if (!sensorsAndTemplateOptions.value[1].options.includes (val)){
-      //   disabledSensorsAndTemplate.value = true
-      //   isLoadingSensorsAndTemplate.value = true
-      //   await getKKSFilterByMasks(sensorsAndTemplateOptions, chosenSensorsAndTemplate)
-      //   isLoadingSensorsAndTemplate.value = false
-      //   disabledSensorsAndTemplate.value = false
-      // }
     }
 
     function onMultiselectQualitiesChange(val) {
@@ -119,10 +157,10 @@ export default {
     }
 
     async function onRequestButtonClick() {
-      // dataTableRequested.value = false
-      // dataTableStartRequested.value = true
+      dataTableRequested.value = false
       dateTimeBeginReport.value = new Date().toLocaleString()
       if (
+        !chosenTypesOfSensorsData.length ||
         !chosenSensorsAndTemplate.length ||
         !chosenQuality.length ||
         !dateTime.value
@@ -130,30 +168,61 @@ export default {
         alert('Не заполнены параметры запроса!')
         return
       }
-      // progressBarDiscreteSignalsActive.value = true
-      // progressBarDiscreteSignals.value = '0'
-      // await getDiscreteSignals(
-      //   chosenSensors,
-      //   chosenValues,
-      //   chosenQuality,
-      //   dateTime.value,
-      //   dataTable,
-      //   dataTableRequested
-      // )
+      dataTableStartRequested.value = true
+      progressBarSignalsActive.value = true
+      progressBarSignals.value = '0'
+      await getSignals(
+        chosenTypesOfSensorsData,
+        chosenSensorsAndTemplate,
+        chosenQuality,
+        dateTime.value,
+        dataTable,
+        dataTableRequested
+      )
       dateTimeEndReport.value = new Date().toLocaleString()
-      // progressBarDiscreteSignals.value = '100'
-      // progressBarDiscreteSignalsActive.value = false
+      progressBarSignals.value = '100'
+      progressBarSignalsActive.value = false
+    }
+    
+    function onInterruptRequestButtonClick() {
+      cancelSignals()
+      dataTableStartRequested.value = false
+      progressBarSignalsActive.value = false
+
     }
 
+    function qualityClass(quality) {
+      return [
+        {
+          'bg-danger text-white': applicationStore.badCode.includes(quality['Качество']),
+          'bg-warning text-white': quality['Качество'] === ''
+        }
+      ]
+    }
+
+    function codeOfQualityClass(code) {
+      return [
+        {
+          'bg-danger text-white': applicationStore.badNumericCode.includes(code['Код качества']),
+          'bg-warning text-white': code['Код качества'] === ''
+        }
+      ]
+    }
+
+    function setProgressBarSignals(count) {
+      progressBarSignals.value = String(count)
+    }
+    window.eel.expose(setProgressBarSignals, 'setProgressBarSignals')
+
     function onButtonDownloadCsvClick() {
-      // const link = document.createElement('a')
-      // const pathDiscreteSignalsCsv = 'discrete_slice.csv'
-      // link.setAttribute('download', pathDiscreteSignalsCsv)
-      // link.setAttribute('type', 'application/octet-stream')
-      // link.setAttribute('href', 'discrete_slice.csv')
-      // document.body.appendChild(link)
-      // link.click()
-      // link.remove()
+      const link = document.createElement('a')
+      const pathSignalsCsv = 'signals_slice.csv'
+      link.setAttribute('download', pathSignalsCsv)
+      link.setAttribute('type', 'application/octet-stream')
+      link.setAttribute('href', 'signals_slice.csv')
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
     }
 
     function onButtonDownloadPdfClick() {
@@ -161,6 +230,10 @@ export default {
     }
 
     return {
+      typesOfSensorsDataValue,
+      typesOfSensorsDataOptions,
+      chosenTypesOfSensorsData,
+      onTypesOfSensorsDataChange,
       sensorsAndTemplateValue,
       sensorsAndTemplateOptions,
       chosenSensorsAndTemplate,
@@ -179,9 +252,15 @@ export default {
       dateTimeBeginReport,
       dateTimeEndReport,
       onRequestButtonClick,
+      onInterruptRequestButtonClick,
       dataTable,
       dataTableRequested,
       dataTableStartRequested,
+      qualityClass,
+      codeOfQualityClass,
+      progressBarSignals,
+      progressBarSignalsActive,
+      setProgressBarSignals,
       onButtonDownloadCsvClick,
       onButtonDownloadPdfClick
     }
@@ -195,7 +274,28 @@ export default {
     <div class="container">
       <div class="row">
         <div class="col" style="padding-bottom: 20px">
-          <label for="sensorsAndTemplateSignalsReport">Выберите шаблон или теги сигналов, проходящие по условию введенного шаблона</label>
+          <label for="typesOfSensorsDataSignalsReport">Выберите тип данных тегов</label>
+          <Multiselect
+            id="typesOfSensorsDataSignalsReport"
+            v-model="typesOfSensorsDataValue"
+            mode="tags"
+            :close-on-select="false"
+            :groups="true"
+            :options="typesOfSensorsDataOptions"
+            :searchable="true"
+            :create-option="false"
+            placeholder="Выберите тип данных тегов"
+            limit="-1"
+            :can-clear="false"
+            @change="onTypesOfSensorsDataChange"
+          ></Multiselect>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col" style="padding-bottom: 20px">
+          <label for="sensorsAndTemplateSignalsReport"
+            >Выберите шаблон или теги сигналов, проходящие по условию введенного шаблона</label
+          >
           <Multiselect
             id="sensorsAndTemplateSignalsReport"
             v-model="sensorsAndTemplateValue"
@@ -266,8 +366,63 @@ export default {
           <Button @click="onButtonDownloadCsvClick">Загрузить CSV</Button>
         </div>
       </div>
+      <div class="row" v-if="dataTableStartRequested">
+        Старт построения отчета: {{ dateTimeBeginReport }}
+      </div>
+      <div class="row" v-if="progressBarSignalsActive">
+        <div class="col-10 align-self-center">
+          <ProgressBar :value="progressBarSignals"></ProgressBar>
+        </div>
+        <div class="col-2">
+          <Button @click="onInterruptRequestButtonClick">Прервать запрос</Button>
+        </div>
+      </div>
+      <div class="row">
+        <div class="card" v-if="dataTableRequested">
+          <DataTable
+            :value="dataTable"
+            paginator
+            :rows="10"
+            :rowsPerPageOptions="[10, 20, 50, 100]"
+            scrollable="true"
+            scrollHeight="1000px"
+            columnResizeMode="fit"
+            showGridlines="true"
+            tableStyle="min-width: 50rem"
+          >
+            <Column
+              field="Код сигнала (KKS)"
+              header="Код сигнала (KKS)"
+              sortable
+              style="width: 35%"
+            ></Column>
+            <Column
+              field="Дата и время измерения"
+              header="Дата и время измерения"
+              sortable
+              style="width: 30%"
+            ></Column>
+            <Column field="Значение" header="Значение" sortable style="width: 10%"></Column>
+            <Column field="Качество" header="Качество" sortable style="width: 20%">
+              <template #body="slotProps">
+                <div :class="qualityClass(slotProps.data)">
+                  {{ slotProps.data['Качество'] }}
+                </div>
+              </template>
+            </Column>
+            <Column field="Код качества" header="Код качества" sortable style="width: 5%">
+              <template #body="slotProps">
+                <div :class="codeOfQualityClass(slotProps.data)">
+                  {{ slotProps.data['Код качества'] }}
+                </div>
+              </template>
+            </Column>
+          </DataTable>
+        </div>
+      </div>
+      <div class="row" v-if="dataTableRequested">Отчет: {{ dateTimeEndReport }}</div>
     </div>
   </div>
 </template>
 
-<style></style>
+<style src="@vueform/multiselect/themes/default.css"></style>
