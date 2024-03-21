@@ -1,6 +1,6 @@
 <script>
 import Multiselect from '@vueform/multiselect'
-import { ref, onMounted, onUnmounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onUnmounted, onBeforeUnmount, computed } from 'vue'
 import { getKKSFilterByMasks, getTypesOfSensors, getSignals, cancelSignals } from '../stores'
 
 import { useApplicationStore } from '../stores/applicationStore'
@@ -8,7 +8,11 @@ import { useApplicationStore } from '../stores/applicationStore'
 export default {
   name: 'SignalsReport',
   components: { Multiselect },
-  setup() {
+  props: {
+    collapsedSidebar: Boolean
+  },
+  emits: ['toggleButtonDialogConfigurator'],
+  setup(props, context) {
     const applicationStore = useApplicationStore()
 
     const typesOfSensorsDataValue = ref(null)
@@ -66,6 +70,11 @@ export default {
     const progressBarSignals = ref('0')
     const progressBarSignalsActive = ref(false)
 
+    const statusRequestTextArea = ref('')
+    const statusRequestCol = computed(() => {
+      return props.collapsedSidebar ? 115 : 90
+    })
+
     let delayTimer = null
 
     onMounted(async () => {
@@ -74,6 +83,7 @@ export default {
       // await getKKSFilterByMasks(sensorsAndTemplateOptions, chosenTypesOfSensorsData, chosenSensorsAndTemplate)
       // disabledSensorsAndTemplate.value = false
       window.addEventListener("beforeunload",  async (event) => {
+        // await context.emit('toggleButtonDialogConfigurator', false)
         await cancelSignals()
       })
     })
@@ -83,6 +93,7 @@ export default {
     })
 
     onUnmounted(async () => {
+      if (progressBarSignalsActive.value) await context.emit('toggleButtonDialogConfigurator', false)
       await cancelSignals()
     })
 
@@ -168,9 +179,13 @@ export default {
         alert('Не заполнены параметры запроса!')
         return
       }
+      if (progressBarSignalsActive.value) return
+      await context.emit('toggleButtonDialogConfigurator', true)
       dataTableStartRequested.value = true
       progressBarSignalsActive.value = true
       progressBarSignals.value = '0'
+      statusRequestTextArea.value = ''
+      statusRequestTextArea.value += 'Начало выполнения запроса...\n'
       await getSignals(
         chosenTypesOfSensorsData,
         chosenSensorsAndTemplate,
@@ -182,13 +197,14 @@ export default {
       dateTimeEndReport.value = new Date().toLocaleString()
       progressBarSignals.value = '100'
       progressBarSignalsActive.value = false
+      await context.emit('toggleButtonDialogConfigurator', false)
     }
     
-    function onInterruptRequestButtonClick() {
+    async function onInterruptRequestButtonClick() {
+      if (progressBarSignalsActive.value) await context.emit('toggleButtonDialogConfigurator', false)
       cancelSignals()
       dataTableStartRequested.value = false
       progressBarSignalsActive.value = false
-
     }
 
     function qualityClass(quality) {
@@ -213,6 +229,14 @@ export default {
       progressBarSignals.value = String(count)
     }
     window.eel.expose(setProgressBarSignals, 'setProgressBarSignals')
+    
+    function setUpdateSignalsRequestStatus(statusString) {
+      statusRequestTextArea.value += String(statusString)
+      let textarea = document.getElementById('signals-request-text-area')
+      textarea.scrollTop = textarea.scrollHeight
+    }
+    window.eel.expose(setUpdateSignalsRequestStatus, 'setUpdateSignalsRequestStatus')
+
 
     function onButtonDownloadCsvClick() {
       const link = document.createElement('a')
@@ -260,6 +284,9 @@ export default {
       codeOfQualityClass,
       progressBarSignals,
       progressBarSignalsActive,
+      statusRequestTextArea,
+      statusRequestCol,
+      setUpdateSignalsRequestStatus,
       setProgressBarSignals,
       onButtonDownloadCsvClick,
       onButtonDownloadPdfClick
@@ -375,6 +402,17 @@ export default {
         </div>
         <div class="col-2">
           <Button @click="onInterruptRequestButtonClick">Прервать запрос</Button>
+        </div>
+      </div>
+      <div class="row" v-if="progressBarSignalsActive">
+        <div class="col">
+          <TextArea
+            id="signals-request-text-area"
+            v-model="statusRequestTextArea"
+            rows="10"
+            :cols="statusRequestCol"
+            readonly
+            :style="{ resize: 'none', 'overflow-y': scroll,  width: '83%' }">{{ statusRequestTextArea }}</TextArea>
         </div>
       </div>
       <div class="row">

@@ -1,6 +1,6 @@
 <script>
 import { RouterLink, RouterView } from 'vue-router'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { getServerConfig, runUpdate, cancelUpdate } from './stores'
 
 export default {
@@ -44,6 +44,7 @@ export default {
 
     const dialogConfiguratorActive = ref(false)
     const configServer = ref('')
+    const buttonDialogConfiguratorIsDisabled = ref(false)
 
     const statusUpdateTextArea = ref('')
     const statusUpdateButtonActive = ref(false)
@@ -55,11 +56,13 @@ export default {
       statusUpdateTextArea.value = configServer.value
       if (!checkFileActive.value)
         alert('Не найден файл kks_all.csv.\nСконфигурируйте клиент OPC UA и обновите файл тегов')
+      window.addEventListener("beforeunload",  async (event) => {
+        await cancelUpdate()
+      })
     })
 
     function onButtonDialogConfiguratorActive() {
       dialogConfiguratorActive.value = true
-
     }
 
     async function onButtonDialogUpdate() {
@@ -85,18 +88,30 @@ export default {
       dialogConfiguratorActive.value = false
     }
 
+    function toggleButton(bool) {
+      console.log("bool = ")
+      console.log(bool)
+      console.log("before emit = ")
+      console.log(buttonDialogConfiguratorIsDisabled.value)
+      buttonDialogConfiguratorIsDisabled.value = bool
+      console.log("after emit = ")
+      console.log(buttonDialogConfiguratorIsDisabled.value)
+    }
+
     return {
       sidebarMenu,
       collapsed,
       dialogConfiguratorActive,
       configServer,
+      buttonDialogConfiguratorIsDisabled,
       statusUpdateTextArea,
       statusUpdateButtonActive,
       checkFileActive,
       onButtonDialogConfiguratorActive,
       onButtonDialogUpdate,
       setUpdateStatus,
-      onButtonCancelUpdateClick
+      onButtonCancelUpdateClick,
+      toggleButton
     }
   }
 }
@@ -105,7 +120,7 @@ export default {
 <template>
   <sidebar-menu v-model:collapsed="collapsed" :menu="sidebarMenu">
     <template v-slot:footer v-if="!collapsed">
-      <Button @click="onButtonDialogConfiguratorActive">Обновление файла тегов KKS</Button>
+      <Button @click="onButtonDialogConfiguratorActive" :disabled="buttonDialogConfiguratorIsDisabled">Обновление файла тегов KKS</Button>
       <Dialog
         v-model="dialogConfiguratorActive"
         :visible="dialogConfiguratorActive"
@@ -158,7 +173,7 @@ export default {
         <h1>Сконфигурируйте клиент OPC UA и обновите файл тегов.</h1>
       </div>
       <div class="container" v-if="checkFileActive">
-        <RouterView />
+        <RouterView :collapsed-sidebar="collapsed" @toggleButtonDialogConfigurator="toggleButton"/>
       </div>
     </div>
   </div>

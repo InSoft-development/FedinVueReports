@@ -2,7 +2,7 @@
 import { FilterMatchMode } from 'primevue/api'
 import Multiselect from '@vueform/multiselect'
 
-import { ref, onMounted, onUnmounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onUnmounted, onBeforeUnmount, computed } from 'vue'
 import { getKKSFilterByMasks, getTypesOfSensors, getKKSByMasksForTable, getGrid, cancelGrid } from '../stores'
 
 import { useApplicationStore } from '../stores/applicationStore'
@@ -10,7 +10,11 @@ import { useApplicationStore } from '../stores/applicationStore'
 export default {
   name: 'GridReport',
   components: { Multiselect },
-  setup() {
+  props: {
+    collapsedSidebar: Boolean
+  },
+  emits: ['toggleButtonDialogConfigurator'],
+  setup(props, context) {
     const applicationStore = useApplicationStore()
 
     const typesOfSensorsDataValue = ref(null)
@@ -55,6 +59,11 @@ export default {
     const progressBarGrid = ref('0')
     const progressBarGridActive = ref(false)
 
+    const statusRequestTextArea = ref('')
+    const statusRequestCol = computed(() => {
+      return props.collapsedSidebar ? 115 : 90
+    })
+
     const dataCodeTable = ref()
     // const virtualDataCodeTable = ref()
     const dataTable = ref()
@@ -80,6 +89,7 @@ export default {
       await getTypesOfSensors(typesOfSensorsDataOptions)
 
       window.addEventListener("beforeunload",  async (event) => {
+        await context.emit('toggleButtonDialogConfigurator')
         await cancelGrid()
       })
     })
@@ -89,6 +99,7 @@ export default {
     })
 
     onUnmounted(async () => {
+      if (progressBarGridActive.value) await context.emit('toggleButtonDialogConfigurator')
       await cancelGrid()
     })
 
@@ -180,8 +191,16 @@ export default {
         alert('Дата конца не должна совпадать с датой начала')
         return
       }
+      if (progressBarGridActive.value) return
+      await context.emit('toggleButtonDialogConfigurator')
 
       dataTableStartRequested.value = true
+
+      progressBarGridActive.value = true
+      progressBarGrid.value = '0'
+
+      statusRequestTextArea.value = ''
+      statusRequestTextArea.value += 'Начало выполнения запроса...\n'
 
       columnsTable.value = []
       columnsTableArrayOfArray.value = []
@@ -210,9 +229,6 @@ export default {
 
       dataCodeTable.value = codeTableArray
       columnsTable.value = columnsTableArray
-
-      progressBarGridActive.value = true
-      progressBarGrid.value = '0'
 
       await getGrid(
         chosenSensors.value,
@@ -244,9 +260,11 @@ export default {
       dateTimeEndReport.value = new Date().toLocaleString()
       progressBarGrid.value = '100'
       progressBarGridActive.value = false
+      await context.emit('toggleButtonDialogConfigurator')
     }
 
     function onInterruptRequestButtonClick() {
+      if (progressBarGridActive.value) context.emit('toggleButtonDialogConfigurator')
       cancelGrid()
       dataTableStartRequested.value = false
       progressBarGridActive.value = false
@@ -256,6 +274,13 @@ export default {
       progressBarGrid.value = String(count)
     }
     window.eel.expose(setProgressBarGrid, 'setProgressBarGrid')
+
+    function setUpdateGridRequestStatus(statusString) {
+      statusRequestTextArea.value += String(statusString)
+      let textarea = document.getElementById('grid-request-text-area')
+      textarea.scrollTop = textarea.scrollHeight
+    }
+    window.eel.expose(setUpdateGridRequestStatus, 'setUpdateGridRequestStatus')
 
     function onButtonDownloadCsvClick() {
       const link = document.createElement('a')
@@ -330,6 +355,9 @@ export default {
       intervalRadio,
       progressBarGrid,
       progressBarGridActive,
+      statusRequestTextArea,
+      statusRequestCol,
+      setUpdateGridRequestStatus,
       dataCodeTable,
       dataTable,
       dataTableStatus,
@@ -498,6 +526,17 @@ export default {
         </div>
         <div class="col-2">
           <Button @click="onInterruptRequestButtonClick">Прервать запрос</Button>
+        </div>
+      </div>
+      <div class="row" v-if="progressBarGridActive">
+        <div class="col">
+          <TextArea
+            id="grid-request-text-area"
+            v-model="statusRequestTextArea"
+            rows="10"
+            :cols="statusRequestCol"
+            readonly
+            :style="{ resize: 'none', 'overflow-y': scroll,  width: '83%' }">{{ statusRequestTextArea }}</TextArea>
         </div>
       </div>
       <div class="row" style="padding-bottom: 20px">
