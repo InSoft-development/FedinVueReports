@@ -1,7 +1,9 @@
 <script>
 import { RouterLink, RouterView } from 'vue-router'
 import { ref, onMounted, onUnmounted } from 'vue'
-import { getServerConfig, runUpdate, cancelUpdate } from './stores'
+import { useConfirm } from "primevue/useconfirm"
+
+import { getServerConfig, getLastUpdateFileKKS, runUpdate, cancelUpdate, getIpAndPortConfig, changeOpcServerConfig } from './stores'
 
 export default {
   setup() {
@@ -43,7 +45,11 @@ export default {
     const collapsed = ref(false)
 
     const dialogConfiguratorActive = ref(false)
+    const lastUpdateFileKKS = ref('')
     const configServer = ref('')
+    const ipOPC = ref('')
+    const portOPC = ref(0)
+
     const buttonDialogConfiguratorIsDisabled = ref(false)
 
     const statusUpdateTextArea = ref('')
@@ -51,8 +57,28 @@ export default {
 
     const checkFileActive = ref(false)
 
+    const confirm = useConfirm()
+    const confirmUpdate = () => {
+      confirm.require({
+        message: "Вы действительго хотите запустить обновление тегов KKS?",
+        header: 'Подтверждение обновления тегов',
+        icon: 'pi pi-exclamation-triangle',
+        rejectClass: 'p-button-secondary p-button-outlined',
+        rejectLabel: 'Отмена',
+        acceptLabel: 'Подтвердить',
+        accept: () => {
+          onButtonDialogUpdate()
+        },
+        reject: () => {
+          return
+        }
+      })
+    }
+
     onMounted(async () => {
       await getServerConfig(configServer, checkFileActive)
+      await getLastUpdateFileKKS(lastUpdateFileKKS)
+      await getIpAndPortConfig(ipOPC, portOPC)
       statusUpdateTextArea.value = configServer.value
       if (!checkFileActive.value)
         alert('Не найден файл kks_all.csv.\nСконфигурируйте клиент OPC UA и обновите файл тегов')
@@ -70,13 +96,26 @@ export default {
       statusUpdateTextArea.value = ''
       statusUpdateTextArea.value += 'Запуск обновления тегов...\n'
       await runUpdate()
+      await getServerConfig(configServer, checkFileActive)
+      if (!checkFileActive.value){
+        alert('Файл тегов не найден')
+        return
+      }
       alert('Обновление тегов закончено')
       statusUpdateButtonActive.value = false
       checkFileActive.value = true
+      await getLastUpdateFileKKS(lastUpdateFileKKS)
     }
 
-    function setUpdateStatus(statusString) {
-      statusUpdateTextArea.value += String(statusString)
+    function setUpdateStatus(statusString, serviceFlag) {
+      if (serviceFlag)
+        statusUpdateTextArea.value += String(statusString)
+      else {
+        let textSplit = statusUpdateTextArea.value.trim("\n").split("\n")
+        textSplit[textSplit.length-1] = statusString
+        statusUpdateTextArea.value = textSplit.join("\n")
+      }
+      // statusUpdateTextArea.value += String(statusString)
       let textarea = document.getElementById('status-text-area')
       textarea.scrollTop = textarea.scrollHeight
     }
@@ -89,20 +128,28 @@ export default {
     }
 
     function toggleButton(bool) {
-      console.log("bool = ")
-      console.log(bool)
-      console.log("before emit = ")
-      console.log(buttonDialogConfiguratorIsDisabled.value)
       buttonDialogConfiguratorIsDisabled.value = bool
-      console.log("after emit = ")
-      console.log(buttonDialogConfiguratorIsDisabled.value)
+    }
+
+    function changeConfig() {
+      if ((ipOPC.value.length === 0) || !portOPC.value){
+        alert("Заполните IP адрес и порт")
+        return
+      }
+      changeOpcServerConfig(ipOPC.value, portOPC.value)
+      getServerConfig(configServer, checkFileActive)
+      getIpAndPortConfig(ipOPC, portOPC)
     }
 
     return {
       sidebarMenu,
       collapsed,
       dialogConfiguratorActive,
+      lastUpdateFileKKS,
       configServer,
+      ipOPC,
+      portOPC,
+      changeConfig,
       buttonDialogConfiguratorIsDisabled,
       statusUpdateTextArea,
       statusUpdateButtonActive,
@@ -111,7 +158,8 @@ export default {
       onButtonDialogUpdate,
       setUpdateStatus,
       onButtonCancelUpdateClick,
-      toggleButton
+      toggleButton,
+      confirmUpdate
     }
   }
 }
@@ -133,14 +181,75 @@ export default {
       >
         <div class="container">
           <div class="row">
-            <div class="col">Параметры конфигурации: {{ configServer }}</div>
+            <div class="col">
+              <h4>Сведения о конфигурации</h4>
+            </div>
           </div>
+          <div class="row">
+            <div class="col">
+              Дата последнего обновления файла тегов KKS: <b>{{ lastUpdateFileKKS }}</b>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">Параметры конфигурации: <b>{{ configServer }}</b></div>
+          </div>
+          <hr>
+          <div class="row">
+            <div class="col">
+              <h4>Изменить параметры конфигурации</h4>
+            </div>
+          </div>
+<!--          <div class="row">-->
+<!--            <div class="col">-->
+<!--              <label for="ip-opc-server-address">IP адрес сервера OPC UA</label>-->
+<!--            </div>-->
+<!--            <div class="col">-->
+<!--              <label for="port-opc-server-address">Порт сервера OPC UA</label>-->
+<!--            </div>-->
+<!--          </div>-->
+          <div class="margin-label" style="margin-bottom: 20px"></div>
+          <div class="row">
+            <div class="col">
+              <FloatLabel>
+                <InputText
+                  v-model="ipOPC"
+                  type="text"
+                  id="ip-opc-server-address"
+                  pattern="(\b25[0-5]|\b2[0-4][0-9]|\b[01]?[0-9][0-9]?)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}"
+                  required
+                >
+                </InputText>
+                <label for="ip-opc-server-address">IP адрес сервера OPC UA</label>
+              </FloatLabel>
+            </div>
+            <div class="col">
+              <FloatLabel>
+                <InputNumber
+                  v-model="portOPC"
+                  id="port-opc-server-address"
+                  input-id="port"
+                  mode="decimal"
+                  show-buttons
+                  :min="0"
+                  :step="1"
+                  :allow-empty="true"
+                  :aria-label="portOPC"
+                >
+                </InputNumber>
+                <label for="port-opc-server-address">Порт сервера OPC UA</label>
+              </FloatLabel>
+            </div>
+            <div class="col">
+              <Button @click="changeConfig">Сохранить</Button>
+            </div>
+          </div>
+          <hr>
           <div class="row">
             <div class="col">
               <TextArea
                 id="status-text-area"
                 v-model="statusUpdateTextArea"
-                rows="10"
+                rows="3"
                 cols="80"
                 readonly
                 :style="{ resize: 'none', 'overflow-y': scroll }"
@@ -156,11 +265,12 @@ export default {
             @click="onButtonCancelUpdateClick"
             text
           />
+          <ConfirmDialog></ConfirmDialog>
           <Button
             label="Обновить"
             icon="pi pi-check"
             :disabled="statusUpdateButtonActive"
-            @click="onButtonDialogUpdate"
+            @click="confirmUpdate"
           />
         </template>
       </Dialog>

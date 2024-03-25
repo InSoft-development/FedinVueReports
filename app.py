@@ -128,6 +128,34 @@ def get_server_config():
 
 
 @eel.expose
+def get_ip_port_config():
+    logger.info(f"get_ip_port_config()")
+    with open(constants.CLIENT_SERVER_CONF, "r") as readfile:
+        server_config = readfile.readline().replace("opc.tcp://", '')
+        logger.info(server_config)
+
+    ip, port = server_config.split(':')
+    return ip, port
+
+
+@eel.expose
+def change_opc_server_config(ip, port):
+    logger.info(f"change_opc_server_config({ip}, {port})")
+
+    with open(constants.CLIENT_SERVER_CONF, "w") as writefile:
+        writefile.write(f"opc.tcp://{ip}:{port}")
+
+
+@eel.expose
+def get_last_update_file_kks():
+    logger.info(f"get_last_update_file_kks()")
+    if not os.path.isfile(constants.DATA_KKS_ALL):
+        return f"Файл {constants.DATA_KKS_ALL} не найден"
+    logger.info(str(datetime.datetime.fromtimestamp(os.path.getmtime(constants.DATA_KKS_ALL))))
+    return str(datetime.datetime.fromtimestamp(os.path.getmtime(constants.DATA_KKS_ALL)))
+
+
+@eel.expose
 def get_types_of_sensors():
     logger.info(f"get_types_of_sensors()")
     logger.info(KKS_ALL[1].dropna().unique().tolist())
@@ -155,10 +183,128 @@ def update_kks_all():
 
         try:
             global p_kks_all
-            p_kks_all = subprocess.Popen(args, stdout=subprocess.PIPE, shell=True, preexec_fn=os.setsid)
+            p_kks_all = subprocess.Popen(args, close_fds=True, stdout=subprocess.PIPE, shell=True, preexec_fn=os.setsid, stderr=subprocess.PIPE, bufsize=1, text=True)
             eel.sleep(1)
+
+            # line = p_kks_all.stdout.read(1)
+            # logger.info(line)
+            # if line == '':
+            #     logger.info(line)
+            #     return
+            # sys.stdout.write(line)
+            # sys.stdout.flush()
+
+            if p_kks_all.poll() == 0:
+                try:
+                    lines = p_kks_all.stdout.read()
+                    lines_decode = str(lines)
+
+                    eel.setUpdateStatus(f"Ошибка: {lines_decode}\n", True)
+                    return 
+
+                    # if "Connect failed with status BadTimeout" in lines_decode:
+                    #     eel.setUpdateStatus(f"Ошибка: {lines_decode}\n", True)
+                    #     return
+                    #
+                    # if "Connect failed with status Bad" in lines_decode:
+                    #     eel.setUpdateStatus(f"Ошибка: {lines_decode}\n", True)
+                    #     return
+                    #
+                    # if "Connect failed with status BadCommunicationError" in lines_decode:
+                    #     eel.setUpdateStatus(f"Ошибка: {lines_decode}\n", True)
+                    #     return
+                    #
+                    # if "Connect failed with status BadDisconnect" in lines_decode:
+                    #     eel.setUpdateStatus(f"Ошибка: {lines_decode}\n", True)
+                    #     return
+
+                except Exception as exception:
+                    logger.error(exception)
+                    eel.setUpdateStatus(f"Ошибка: {exception}\n", True)
+                    return
+
             while p_kks_all.poll() != 0:
-                logger.info("p_kks_all")
+                logger.info(p_kks_all)
+                logger.info(p_kks_all.stdout)
+
+                # line = p_kks_all.stdout.read(1)
+                # logger.info(line)
+                # if line == '':
+                #     break
+                # sys.stdout.write(line)
+                # sys.stdout.flush()
+
+
+                # try:
+                #     with open(f"/proc/{p_kks_all.pid}/fd/1", 'r') as readfile:
+                #         lines = readfile.read()
+                #
+                #     logger.info(lines)
+
+                    # if "Connect failed with status BadTimeout" in lines:
+                    #     eel.setUpdateStatus(f"Ошибка: {lines}\n", True)
+                    #     return
+                    #
+                    # if "Connect failed with status Bad" in lines:
+                    #     eel.setUpdateStatus(f"Ошибка: {lines}\n", True)
+                    #     return
+                    #
+                    # if "Connect failed with status BadCommunicationError" in lines:
+                    #     eel.setUpdateStatus(f"Ошибка: {lines}\n", True)
+                    #     return
+                    #
+                    # if "Connect failed with status BadDisconnect" in lines:
+                    #     eel.setUpdateStatus(f"Ошибка: {lines}\n", True)
+                    #     return
+
+                # except Exception as exception:
+                #     logger.error(exception)
+                #     lines = p_kks_all.stdout.read()
+                #     lines_decode = str(lines.decode('utf-8'))
+                    # if "Connect failed with status BadTimeout" in lines_decode:
+                    #     eel.setUpdateStatus(f"Ошибка: {lines_decode}\n", True)
+                    #     return
+                    #
+                    # if "Connect failed with status Bad" in lines_decode:
+                    #     eel.setUpdateStatus(f"Ошибка: {lines_decode}\n", True)
+                    #     return
+                    #
+                    # if "Connect failed with status BadCommunicationError" in lines_decode:
+                    #     eel.setUpdateStatus(f"Ошибка: {lines_decode}\n", True)
+                    #     return
+                    #
+                    # if "Connect failed with status BadDisconnect" in lines_decode:
+                    #     eel.setUpdateStatus(f"Ошибка: {lines_decode}\n", True)
+                    #     return
+                    # eel.setUpdateStatus(f"Ошибка: {exception}\n", True)
+                    # return
+
+                # logger.info(p_kks_all.stdout.read())
+                # logger.info(p_kks_all.stdout.read())
+
+                # try:
+                #     lines = p_kks_all.stdout.read()
+                #     lines_decode = str(lines.decode('utf-8'))
+                #     if "Connect failed with status BadTimeout" in lines_decode:
+                #         eel.setUpdateStatus(f"Ошибка: {lines_decode}\n", True)
+                #         return
+                #
+                #     if "Connect failed with status Bad" in lines_decode:
+                #         eel.setUpdateStatus(f"Ошибка: {lines_decode}\n", True)
+                #         return
+                #
+                #     if "Connect failed with status BadCommunicationError" in lines_decode:
+                #         eel.setUpdateStatus(f"Ошибка: {lines_decode}\n", True)
+                #         return
+                #
+                # if "Connect failed with status BadDisconnect" in lines_decode:
+                #     eel.setUpdateStatus(f"Ошибка: {lines_decode}\n", True)
+                #     return
+                #
+                # except Exception as exception:
+                #     logger.error(exception)
+                #     return
+
                 # try:
                 # logger.info(p_kks_all.stdout)
                 # out_kks_all, err_kks_all = p_kks_all.communicate(timeout=10)
@@ -168,29 +314,28 @@ def update_kks_all():
                 #     return
                 # except TimeoutExpired:
 
-                logger.info("p_kks_all")
                 p_tail = subprocess.Popen(args_tail, stdout=subprocess.PIPE, shell=True)
                 out, err = p_tail.communicate()
                 records = out.decode('utf-8').split('\n')
                 count = records[0].split()[0]
                 record = records[1].split(';')[0]
-                eel.setUpdateStatus(f"{count}. {record} Успех\n")
+                eel.setUpdateStatus(f"{count}. {record} Успех\n", False)
                 logger.info(f"{count}. {record} Успех\n")
                 eel.sleep(5)
 
-            eel.setUpdateStatus(f"Последняя запись\n")
+            eel.setUpdateStatus(f"Последняя запись\n", True)
             p_tail = subprocess.Popen(args_tail, stdout=subprocess.PIPE, shell=True)
             out, err = p_tail.communicate()
             records = out.decode('utf-8').split('\n')
             count = records[0].split()[0]
             record = records[1].split(';')[0]
-            eel.setUpdateStatus(f"{count}. {record} Успех\n")
+            eel.setUpdateStatus(f"{count}. {record} Успех\n", True)
         except subprocess.CalledProcessError as subprocess_exception:
             logger.error(subprocess_exception)
-            eel.setUpdateStatus(f"Ошибка: {subprocess_exception}\n")
+            eel.setUpdateStatus(f"Ошибка: {subprocess_exception}\n", True)
         except RuntimeError as run_time_exception:
             logger.error(run_time_exception)
-            eel.setUpdateStatus(f"Ошибка: {run_time_exception}\n")
+            eel.setUpdateStatus(f"Ошибка: {run_time_exception}\n", True)
             return
 
         shutil.copy(constants.CLIENT_KKS, constants.DATA_KKS_ALL)
@@ -201,12 +346,12 @@ def update_kks_all():
         except FileNotFoundError as csv_exception:
             logger.info(csv_exception)
 
-        eel.setUpdateStatus(f"Обновление тегов закончено\n")
+        eel.setUpdateStatus(f"Обновление тегов закончено\n", True)
 
     global update_greenlet
     if update_greenlet:
         logger.warning(f"update_greenlet is running")
-        eel.setUpdateStatus(f"Обновление тегов уже было начато на сервере\n")
+        eel.setUpdateStatus(f"Обновление тегов уже было начато на сервере\n", True)
         return
     update_greenlet = eel.spawn(update_kks_all_spawn)
     eel.gvt.joinall([update_greenlet])
@@ -224,7 +369,7 @@ def update_cancel():
         # p_kks_all.kill()
         eel.gvt.killall([update_greenlet])
         logger.info(f"update_greenlet has been killed")
-        eel.setUpdateStatus(f"Обновление тегов прервано пользователем\n")
+        eel.setUpdateStatus(f"Обновление тегов прервано пользователем\n", True)
         update_greenlet = None
 
 
@@ -232,11 +377,11 @@ signals_greenlet = None
 
 
 @eel.expose
-def get_signals_data(types_list, mask_list, kks_list, quality, date):
-    logger.info(f"get_signals_data({types_list} ,{mask_list}, {kks_list}, {quality}, {date})")
+def get_signals_data(types_list, mask_list, kks_list, quality, date, date_deep_search):
+    logger.info(f"get_signals_data({types_list} ,{mask_list}, {kks_list}, {quality}, {date}, {date_deep_search})")
 
-    def get_signals_data_spawn(types_list, mask_list, kks_list, quality, date):
-        logger.info(f"get_signals_data_spawn({types_list} ,{mask_list}, {kks_list}, {quality}, {date})")
+    def get_signals_data_spawn(types_list, mask_list, kks_list, quality, date, date_deep_search):
+        logger.info(f"get_signals_data_spawn({types_list} ,{mask_list}, {kks_list}, {quality}, {date}, {date_deep_search})")
         error_flag = False
 
         eel.setUpdateSignalsRequestStatus(f"Формирование списка kks сигналов\n")
@@ -305,7 +450,11 @@ def get_signals_data(types_list, mask_list, kks_list, quality, date):
             # Если не нашли, то расширяем поиск:
             if df_sqlite.empty:
                 logger.info(f"{constants.CLIENT_DATA} is empty")
-                eel.setUpdateSignalsRequestStatus(f"Расширение поиска...\n")
+                eel.setUpdateSignalsRequestStatus(f"Расширение поиска в архивах...\n")
+
+                # Получаем предельное время в часах для поиска в глубину в архивах
+                deep_search_in_hour = (parse(date) - parse(date_deep_search)).total_seconds() / 3600
+
                 delta = 2  # Строим запрос на 2 секунды раньше
                 delta_prev = 0  # Формирование окна просмотра архива посредстовом сохранения предыдущего datetime
                 while df_sqlite.empty:
@@ -345,9 +494,12 @@ def get_signals_data(types_list, mask_list, kks_list, quality, date):
                         delta_prev = delta
                         delta += constants.STEP_OF_BACK_SEARCH
                         # Если больше 1 года
-                        if delta > constants.BACK_SEARCH_TIME_IN_HOUR:
-                            logger.info(f'За год не нашлось: {element[0]}->{element[1]}')
-                            eel.setUpdateSignalsRequestStatus(f"За год не нашлось: {element[0]}->{element[1]}\n")
+                        # if delta > constants.BACK_SEARCH_TIME_IN_HOUR:
+                        if delta > deep_search_in_hour:
+                            logger.info(f"За заданный период поиска в часах ({deep_search_in_hour}) в архиве ничего не нашлось: {element[0]}->{element[1]}")
+                            eel.setUpdateSignalsRequestStatus(f"За заданный период поиска в часах ({deep_search_in_hour}) в архиве ничего не нашлось: {element[0]}->{element[1]}\n")
+                            # logger.info(f'За год не нашлось: {element[0]}->{element[1]}')
+                            # eel.setUpdateSignalsRequestStatus(f"За год не нашлось: {element[0]}->{element[1]}\n")
                             error_flag = True
                             break
                     except OverflowError:
@@ -402,7 +554,7 @@ def get_signals_data(types_list, mask_list, kks_list, quality, date):
     if signals_greenlet:
         logger.warning(f"signals_greenlet is running")
         return f"Запрос уже выполняется для другого клиента. Попробуйте выполнить запрос позже"
-    signals_greenlet = eel.spawn(get_signals_data_spawn, types_list, mask_list, kks_list, quality, date)
+    signals_greenlet = eel.spawn(get_signals_data_spawn, types_list, mask_list, kks_list, quality, date, date_deep_search)
     eel.gvt.joinall([signals_greenlet])
     # if signals_greenlet:
     return signals_greenlet.value

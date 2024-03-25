@@ -60,6 +60,8 @@ export default {
     let chosenQuality = []
 
     const dateTime = ref()
+    const dateDeepOfSearch = ref()
+    const maxDateTime = ref(new Date())
     const dateTimeBeginReport = ref()
     const dateTimeEndReport = ref()
 
@@ -167,6 +169,10 @@ export default {
       chosenQuality = val
     }
 
+    function onDateDeepOfSearchClick(){
+      maxDateTime.value = new Date()
+    }
+
     async function onRequestButtonClick() {
       dataTableRequested.value = false
       dateTimeBeginReport.value = new Date().toLocaleString()
@@ -174,11 +180,18 @@ export default {
         !chosenTypesOfSensorsData.length ||
         !chosenSensorsAndTemplate.length ||
         !chosenQuality.length ||
-        !dateTime.value
+        !dateTime.value ||
+        !dateDeepOfSearch.value
       ) {
         alert('Не заполнены параметры запроса!')
         return
       }
+
+      if (dateTime.value <= dateDeepOfSearch.value){
+        alert('Глубина поиска в архивах не должна превышать указанную дату запроса')
+        return
+      }
+
       if (progressBarSignalsActive.value) return
       await context.emit('toggleButtonDialogConfigurator', true)
       dataTableStartRequested.value = true
@@ -191,6 +204,7 @@ export default {
         chosenSensorsAndTemplate,
         chosenQuality,
         dateTime.value,
+        dateDeepOfSearch.value,
         dataTable,
         dataTableRequested
       )
@@ -273,6 +287,9 @@ export default {
       chosenQuality,
       onMultiselectQualitiesChange,
       dateTime,
+      maxDateTime,
+      dateDeepOfSearch,
+      onDateDeepOfSearchClick,
       dateTimeBeginReport,
       dateTimeEndReport,
       onRequestButtonClick,
@@ -361,6 +378,29 @@ export default {
             limit="-1"
             @change="onMultiselectQualitiesChange"
           ></Multiselect>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col">
+          <label for="calendarDateDeepOfSearchSignalsReport">Глубина поиска в архивах</label>
+        </div>
+      </div>
+      <div class="row">
+       <div class="col">
+         <Calendar
+            id="calendarDateDeepOfSearchSignalsReport"
+            v-model="dateDeepOfSearch"
+            :maxDate="maxDateTime"
+            show-time
+            hour-format="24"
+            show-seconds="true"
+            placeholder="ДД/ММ/ГГ ЧЧ:ММ:СС"
+            manualInput="false"
+            date-format="dd/mm/yy"
+            show-icon
+            show-button-bar
+            @click="onDateDeepOfSearchClick"
+          ></Calendar>
         </div>
       </div>
       <div class="row">

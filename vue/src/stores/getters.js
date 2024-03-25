@@ -8,6 +8,16 @@ export async function getServerConfig(configServer, checkFileActive) {
   checkFileActive.value = result[1]
 }
 
+export async function getIpAndPortConfig(ipOPC, portOPC) {
+  let result = await eel.get_ip_port_config()()
+  ipOPC.value = result[0]
+  portOPC.value = result[1]
+}
+
+export async function getLastUpdateFileKKS(lastUpdateFileKKS) {
+  lastUpdateFileKKS.value = await eel.get_last_update_file_kks()()
+}
+
 export async function getTypesOfSensors(typesOptions) {
   typesOptions.value[0].options = await eel.get_types_of_sensors()()
 }
@@ -62,11 +72,13 @@ export async function getSignals(
   sensorsAndTemplate,
   qualities,
   date,
+  dateDeepOfSearch,
   dataTable,
   dataTableRequested
 ) {
   await mutex.runExclusive(async () => {
     let formatDate = new Date(date.toString().split('GMT')[0] + ' UTC').toISOString()
+    let formatDateDeepOfSearch = new Date(dateDeepOfSearch.toString().split('GMT')[0] + ' UTC').toISOString()
     let kks = Array()
     let masks = Array()
     for (let element of sensorsAndTemplate) {
@@ -74,7 +86,7 @@ export async function getSignals(
       else masks.push(element)
     }
 
-    let result = await eel.get_signals_data(types, masks, kks, qualities, formatDate)()
+    let result = await eel.get_signals_data(types, masks, kks, qualities, formatDate, formatDateDeepOfSearch)()
     if (typeof result === 'string') {
       dataTableRequested.value = false
       alert(result)

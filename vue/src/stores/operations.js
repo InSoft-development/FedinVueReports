@@ -20,3 +20,6 @@ export async function cancelGrid() {
   await eel.grid_data_cancel()()
 }
 
+export async function changeOpcServerConfig(ipOPC, portOPC) {
+  await eel.change_opc_server_config(ipOPC, portOPC)()
+}
