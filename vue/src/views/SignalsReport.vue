@@ -84,18 +84,19 @@ export default {
       // disabledSensorsAndTemplate.value = true
       // await getKKSFilterByMasks(sensorsAndTemplateOptions, chosenTypesOfSensorsData, chosenSensorsAndTemplate)
       // disabledSensorsAndTemplate.value = false
-      window.addEventListener("beforeunload",  async (event) => {
+      window.addEventListener('beforeunload', async (event) => {
         // await context.emit('toggleButtonDialogConfigurator', false)
         await cancelSignals()
       })
     })
 
     onBeforeUnmount(async () => {
-      window.removeEventListener("beforeunload", async (event) => {})
+      window.removeEventListener('beforeunload', async (event) => {})
     })
 
     onUnmounted(async () => {
-      if (progressBarSignalsActive.value) await context.emit('toggleButtonDialogConfigurator', false)
+      if (progressBarSignalsActive.value)
+        await context.emit('toggleButtonDialogConfigurator', false)
       await cancelSignals()
     })
 
@@ -118,6 +119,18 @@ export default {
 
     async function onMultiselectSensorsAndTemplateChange(val) {
       console.log('onMultiselectSensorsAndTemplateChange')
+
+      if (
+        window.event.target.id.includes('divRemoveButton') ||
+        window.event.target.id.includes('removeButton') ||
+        window.event.target.id.includes('spanRemoveButton')
+      ) {
+        let lastVal = val[val.length - 1]
+        await onButtonRemoveOptionClick(lastVal)
+        await sensorsAndTemplateValue.value.pop()
+        return
+      }
+
       disabledSensorsAndTemplate.value = true
       isLoadingSensorsAndTemplate.value = true
       chosenSensorsAndTemplate = val
@@ -131,6 +144,7 @@ export default {
     }
 
     function onMultiselectSensorsAndTemplateCreateTag(query) {
+      if (sensorsAndTemplateOptions.value[0].options.includes(query['value'])) return
       sensorsAndTemplateOptions.value[0].options.push(query['value'])
       sensorsAndTemplateValue.value.push(query['value'])
     }
@@ -155,21 +169,19 @@ export default {
 
     async function onMultiselectSensorsAndTemplateSelect(val, option) {
       console.log('onMultiselectSensorsAndTemplateSelect')
-      console.log(val)
-      console.log(option)
+      return
     }
 
     async function onMultiselectSensorsAndTemplateDeselect(val, option) {
       console.log('onMultiselectSensorsAndTemplateDeselect')
-      console.log(val)
-      console.log(option)
+      return
     }
 
     function onMultiselectQualitiesChange(val) {
       chosenQuality = val
     }
 
-    function onDateDeepOfSearchClick(){
+    function onDateDeepOfSearchClick() {
       maxDateTime.value = new Date()
     }
 
@@ -187,7 +199,7 @@ export default {
         return
       }
 
-      if (dateTime.value <= dateDeepOfSearch.value){
+      if (dateTime.value <= dateDeepOfSearch.value) {
         alert('Глубина поиска в архивах не должна превышать указанную дату запроса')
         return
       }
@@ -213,9 +225,10 @@ export default {
       progressBarSignalsActive.value = false
       await context.emit('toggleButtonDialogConfigurator', false)
     }
-    
+
     async function onInterruptRequestButtonClick() {
-      if (progressBarSignalsActive.value) await context.emit('toggleButtonDialogConfigurator', false)
+      if (progressBarSignalsActive.value)
+        await context.emit('toggleButtonDialogConfigurator', false)
       cancelSignals()
       dataTableStartRequested.value = false
       progressBarSignalsActive.value = false
@@ -243,14 +256,13 @@ export default {
       progressBarSignals.value = String(count)
     }
     window.eel.expose(setProgressBarSignals, 'setProgressBarSignals')
-    
+
     function setUpdateSignalsRequestStatus(statusString) {
       statusRequestTextArea.value += String(statusString)
       let textarea = document.getElementById('signals-request-text-area')
       textarea.scrollTop = textarea.scrollHeight
     }
     window.eel.expose(setUpdateSignalsRequestStatus, 'setUpdateSignalsRequestStatus')
-
 
     function onButtonDownloadCsvClick() {
       const link = document.createElement('a')
@@ -265,6 +277,13 @@ export default {
 
     function onButtonDownloadPdfClick() {
       return
+    }
+
+    function onButtonRemoveOptionClick(option) {
+      let index = sensorsAndTemplateOptions.value[0].options.indexOf(option)
+      if (index >= 0) {
+        sensorsAndTemplateOptions.value[0].options.splice(index, 1)
+      }
     }
 
     return {
@@ -306,7 +325,8 @@ export default {
       setUpdateSignalsRequestStatus,
       setProgressBarSignals,
       onButtonDownloadCsvClick,
-      onButtonDownloadPdfClick
+      onButtonDownloadPdfClick,
+      onButtonRemoveOptionClick
     }
   }
 }
@@ -360,7 +380,25 @@ export default {
             @search-change="onMultiselectSensorsAndTemplateSearchChange"
             @select="onMultiselectSensorsAndTemplateSelect"
             @deselect="onMultiselectSensorsAndTemplateDeselect"
-          ></Multiselect>
+          >
+            <template v-slot:option="{ option }">
+              <div class="multiselect-options">
+                <span class="multiselect-tag-wrapper">{{ option.label }}</span>
+              </div>
+              <div :id="'divRemoveButton' + option.label" style="margin: 0 0 0 auto">
+                <Button
+                  v-if="sensorsAndTemplateOptions[0].options.includes(option.label)"
+                  :id="'removeButton' + option.label"
+                  class="multiselect-tag-remove"
+                >
+                  <span
+                    :id="'spanRemoveButton' + option.label"
+                    class="multiselect-tag-remove-icon"
+                  ></span>
+                </Button>
+              </div>
+            </template>
+          </Multiselect>
         </div>
       </div>
       <div class="row">
@@ -386,8 +424,8 @@ export default {
         </div>
       </div>
       <div class="row">
-       <div class="col">
-         <Calendar
+        <div class="col">
+          <Calendar
             id="calendarDateDeepOfSearchSignalsReport"
             v-model="dateDeepOfSearch"
             :maxDate="maxDateTime"
@@ -452,7 +490,9 @@ export default {
             rows="10"
             :cols="statusRequestCol"
             readonly
-            :style="{ resize: 'none', 'overflow-y': scroll,  width: '83%' }">{{ statusRequestTextArea }}</TextArea>
+            :style="{ resize: 'none', 'overflow-y': scroll, width: '83%' }"
+            >{{ statusRequestTextArea }}</TextArea
+          >
         </div>
       </div>
       <div class="row">

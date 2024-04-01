@@ -2,34 +2,73 @@ import { Mutex } from 'async-mutex'
 
 const mutex = new Mutex()
 
+/***
+ * Процедура получения конфигурации сервера OPC UA и проверки файла kks_all.csv
+ * @param configServer
+ * @param checkFileActive
+ * @returns {Promise<void>}
+ */
 export async function getServerConfig(configServer, checkFileActive) {
   let result = await eel.get_server_config()()
   configServer.value = result[0]
   checkFileActive.value = result[1]
 }
 
+/***
+ * Процедура получения ip-адреса и порта клиента OPC UA
+ * @param ipOPC
+ * @param portOPC
+ * @returns {Promise<void>}
+ */
 export async function getIpAndPortConfig(ipOPC, portOPC) {
   let result = await eel.get_ip_port_config()()
   ipOPC.value = result[0]
   portOPC.value = result[1]
 }
 
+/***
+ * Процедура получения даты последнего обновления файла kks_all.csv
+ * @param lastUpdateFileKKS
+ * @returns {Promise<void>}
+ */
 export async function getLastUpdateFileKKS(lastUpdateFileKKS) {
   lastUpdateFileKKS.value = await eel.get_last_update_file_kks()()
 }
 
+/***
+ * Процедура получения типов данных тегов файла kks_all.csv
+ * @param typesOptions
+ * @returns {Promise<void>}
+ */
 export async function getTypesOfSensors(typesOptions) {
   typesOptions.value[0].options = await eel.get_types_of_sensors()()
 }
 
+/***
+ * Процедура получения аналоговых срезов KKS
+ * @param analogSensors
+ * @returns {Promise<void>}
+ */
 export async function getAnalogKKS(analogSensors) {
   analogSensors.value = await eel.get_analog_kks()()
 }
 
+/***
+ * Процедура получения дискретных срезов KKS по маске шаблона
+ * @param analogSensors
+ * @returns {Promise<void>}
+ */
 export async function getDiscreteKKSByMask(discreteSensors, mask) {
   discreteSensors.value = await eel.get_discrete_kks_by_mask(mask)()
 }
 
+/***
+ * Процедура фильтрации kks по маске во время их поиска и выбора шаблона
+ * @param options
+ * @param types
+ * @param masks
+ * @returns {Promise<void>}
+ */
 export async function getKKSFilterByMasks(options, types, masks) {
   await mutex.runExclusive(async () => {
     let masksRequestArray = Array()
@@ -54,6 +93,13 @@ export async function getKKSFilterByMasks(options, types, masks) {
   })
 }
 
+/***
+ * Процедура получения тегов kks по маске шаблона
+ * @param chosenSensors
+ * @param types
+ * @param sensorsAndTemplate
+ * @returns {Promise<void>}
+ */
 export async function getKKSByMasksForTable(chosenSensors, types, sensorsAndTemplate) {
   await mutex.runExclusive(async () => {
     let kks = Array()
@@ -67,6 +113,17 @@ export async function getKKSByMasksForTable(chosenSensors, types, sensorsAndTemp
   })
 }
 
+/***
+ * Процедура выполнения запроса среза
+ * @param types
+ * @param sensorsAndTemplate
+ * @param qualities
+ * @param date
+ * @param dateDeepOfSearch
+ * @param dataTable
+ * @param dataTableRequested
+ * @returns {Promise<void>}
+ */
 export async function getSignals(
   types,
   sensorsAndTemplate,
@@ -78,7 +135,9 @@ export async function getSignals(
 ) {
   await mutex.runExclusive(async () => {
     let formatDate = new Date(date.toString().split('GMT')[0] + ' UTC').toISOString()
-    let formatDateDeepOfSearch = new Date(dateDeepOfSearch.toString().split('GMT')[0] + ' UTC').toISOString()
+    let formatDateDeepOfSearch = new Date(
+      dateDeepOfSearch.toString().split('GMT')[0] + ' UTC'
+    ).toISOString()
     let kks = Array()
     let masks = Array()
     for (let element of sensorsAndTemplate) {
@@ -86,7 +145,14 @@ export async function getSignals(
       else masks.push(element)
     }
 
-    let result = await eel.get_signals_data(types, masks, kks, qualities, formatDate, formatDateDeepOfSearch)()
+    let result = await eel.get_signals_data(
+      types,
+      masks,
+      kks,
+      qualities,
+      formatDate,
+      formatDateDeepOfSearch
+    )()
     if (typeof result === 'string') {
       dataTableRequested.value = false
       alert(result)
@@ -99,6 +165,18 @@ export async function getSignals(
   })
 }
 
+/***
+ * Процедура выполения запроса сетки
+ * @param chosenSensors
+ * @param dateBegin
+ * @param dateEnd
+ * @param interval
+ * @param dimension
+ * @param dataTable
+ * @param dataTableRequested
+ * @param dataTableStatus
+ * @returns {Promise<void>}
+ */
 export async function getGrid(
   chosenSensors,
   dateBegin,
@@ -129,6 +207,15 @@ export async function getGrid(
   }
 }
 
+/***
+ * Процедура выполнения запроса среза аналогового сигнала
+ * @param chosenSensors
+ * @param chosenQuality
+ * @param date
+ * @param dataTable
+ * @param dataTableRequested
+ * @returns {Promise<void>}
+ */
 export async function getAnalogSignals(
   chosenSensors,
   chosenQuality,
@@ -148,6 +235,16 @@ export async function getAnalogSignals(
   }
 }
 
+/***
+ * Процедура выполнения запроса среза дискретного сигнала
+ * @param chosenSensors
+ * @param chosenValues
+ * @param chosenQuality
+ * @param date
+ * @param dataTable
+ * @param dataTableRequested
+ * @returns {Promise<void>}
+ */
 export async function getDiscreteSignals(
   chosenSensors,
   chosenValues,
@@ -173,6 +270,18 @@ export async function getDiscreteSignals(
   }
 }
 
+/***
+ * Процедура выполнения запроса построения аналоговой сетки
+ * @param chosenSensors
+ * @param dateBegin
+ * @param dateEnd
+ * @param interval
+ * @param dimension
+ * @param dataTable
+ * @param dataTableRequested
+ * @param dataTableStatus
+ * @returns {Promise<void>}
+ */
 export async function getAnalogGrid(
   chosenSensors,
   dateBegin,
@@ -203,6 +312,18 @@ export async function getAnalogGrid(
   }
 }
 
+/***
+ * Процедура выполнения запроса построения дискретной сетки
+ * @param chosenSensors
+ * @param dateBegin
+ * @param dateEnd
+ * @param interval
+ * @param dimension
+ * @param dataTable
+ * @param dataTableRequested
+ * @param dataTableStatus
+ * @returns {Promise<void>}
+ */
 export async function getDiscreteGrid(
   chosenSensors,
   dateBegin,
@@ -233,6 +354,17 @@ export async function getDiscreteGrid(
   }
 }
 
+/***
+ * Процедура выполнения запроса построения дребезга сигналов
+ * @param templateSignal
+ * @param date
+ * @param interval
+ * @param dimension
+ * @param showSensors
+ * @param dataTable
+ * @param dataTableRequested
+ * @returns {Promise<void>}
+ */
 export async function getBounceSignals(
   templateSignal,
   date,

@@ -1,6 +1,8 @@
 import gevent.monkey
 gevent.monkey.patch_all()
 
+# Патч обезьяны для функционирования импортируемых модулей python асинхронно
+
 import os
 import signal
 import platform
@@ -13,7 +15,6 @@ import shutil
 
 import sqlite3
 from gevent import subprocess
-# import subprocess
 import shlex
 import itertools
 
@@ -37,6 +38,10 @@ sys.path.insert(1, '../../')
 
 @eel.expose
 def get_analog_kks():
+    """
+    Функция возвращает kks аналоговых датчиков из файла data_AM.txt
+    :return: массив строк kks аналоговых датчиков
+    """
     logger.info(f"get_analog_kks()")
 
     with open(f'{constants.DATA_ANALOG}', 'r', encoding='utf8') as f:
@@ -49,7 +54,14 @@ def get_analog_kks():
 
 @eel.expose
 def get_discrete_kks_by_mask(mask):
+    """
+    Функция возвращает kks дискретных датчиков из файла democub_all.csv по маске шаблона
+    :param mask: маска шаблона regex для поиска тегов kks
+    :return: массив строк kks дискретных датчиков
+    """
     logger.info(f"get_discrete_kks_by_mask({mask})")
+
+    # Если маска пустая, то вовзвращаем пустой массив
     if not mask:
         return []
     discrete_kks = pd.read_csv(constants.DATA_DISCRETE, header=None)
@@ -59,15 +71,23 @@ def get_discrete_kks_by_mask(mask):
 
 @eel.expose
 def get_kks_by_masks(types_list, mask_list):
+    """
+    Функция возвращает массив kks датчиков из файла тегов kks_all.csv по маске шаблона при поиске kks
+    :param types_list: массив выбранных пользователем типов данных
+    :param mask_list: массив маск шаблонов поиска regex
+    :return: массив строк kks датчиков (чтобы не перегружать форму 10000)
+    """
     logger.info(f"get_kks_by_masks({types_list}, {mask_list})")
     kks = KKS_ALL.copy(deep=True)
 
     kks = kks[kks[1].isin(types_list)]
     logger.info(kks)
+
+    # Если маска пустая, то вовзвращаем пустой массив
     if not mask_list:
-        # return kks[0].tolist()[:10000]
         return []
 
+    # Если ведем в веб-приложении поиск тегов и очищаем всю строку поиска, то вовзвращаем пустой массив
     if mask_list[0] == '':
         return []
 
@@ -75,11 +95,19 @@ def get_kks_by_masks(types_list, mask_list):
         kks = kks[kks[0].str.contains(mask, regex=True)]
 
     logger.info(kks[0])
-    return kks[0].tolist()[:10000]
+    return kks[0].tolist()[:constants.COUNT_OF_RETURNED_KKS]
 
 
 @eel.expose
 def get_kks(types_list, mask_list, kks_list):
+    """
+    Функция возвращает массив kks датчиков из файла тегов kks_all.csv по маске шаблона.
+    Используется при выполнеии запросов на бэкенде
+    :param types_list: массив выбранных пользователем типов данных
+    :param mask_list: массив маск шаблонов поиска regex
+    :param kks_list: массив kks напрямую, указанные пользователем
+    :return: массив строк kks датчиков для выполнения запроса
+    """
     logger.info(f"get_kks({types_list} ,{mask_list}, {kks_list})")
     kks_requested_list = []
     kks_mask_list = []
@@ -90,6 +118,8 @@ def get_kks(types_list, mask_list, kks_list):
 
     list_kks = kks[0].tolist()
     set_list_kks = list(set(kks[0].tolist()))
+
+    # Проверка на дубликаты kks, образовывающиеся при поиске по маске и вручную указанным пользователем
 
     try:
         assert len(list_kks) == len(set_list_kks)
@@ -113,12 +143,21 @@ def get_kks(types_list, mask_list, kks_list):
 
 @eel.expose
 def get_kks_tag_exist(kks_tag):
+    """
+    Функция возвращает результат проверки наличия тега в файле тегов kks_all.csv
+    :param kks_tag: проверяемый тег kks
+    :return: True - тег в файле тегов kks_all.csv; False - тега не найден в файле тегов kks_all.csv или это шаблон маски
+    """
     logger.info(f"get_kks_exist({kks_tag})")
     return kks_tag in KKS_ALL[0].values
 
 
 @eel.expose
 def get_server_config():
+    """
+    Функция возвращает конфигурацию клиента OPC UA
+    :return: строка конфигурации клиента OPC UA, True/False результат проверки существования файла тегов kks_all.csv
+    """
     logger.info(f"get_server_config()")
     with open(constants.CLIENT_SERVER_CONF, "r") as readfile:
         server_config = readfile.readline()
@@ -129,6 +168,10 @@ def get_server_config():
 
 @eel.expose
 def get_ip_port_config():
+    """
+    Функция возвращает ip-адрес и порт клиента OPC UA
+    :return: строка ip-адресс, строка порта
+    """
     logger.info(f"get_ip_port_config()")
     with open(constants.CLIENT_SERVER_CONF, "r") as readfile:
         server_config = readfile.readline().replace("opc.tcp://", '')
@@ -140,6 +183,11 @@ def get_ip_port_config():
 
 @eel.expose
 def change_opc_server_config(ip, port):
+    """
+    Процедура заменяет строку конфигурации клиента OPC UA
+    :param ip: ip-адресс
+    :param port: порта
+    """
     logger.info(f"change_opc_server_config({ip}, {port})")
 
     with open(constants.CLIENT_SERVER_CONF, "w") as writefile:
@@ -148,6 +196,10 @@ def change_opc_server_config(ip, port):
 
 @eel.expose
 def get_last_update_file_kks():
+    """
+    Функция возвращает дату последнего обновления файла тегов kks_all.csv
+    :return: строка даты последнего обновления файла тегов kks_all.csv
+    """
     logger.info(f"get_last_update_file_kks()")
     if not os.path.isfile(constants.DATA_KKS_ALL):
         return f"Файл {constants.DATA_KKS_ALL} не найден"
@@ -157,20 +209,32 @@ def get_last_update_file_kks():
 
 @eel.expose
 def get_types_of_sensors():
+    """
+    Функция возвращает все типы данных тегов kks, найденных в файле тегов kks_all.csv
+    :return: массив строк типовы данных
+    """
     logger.info(f"get_types_of_sensors()")
     logger.info(KKS_ALL[1].dropna().unique().tolist())
     return KKS_ALL[1].dropna().unique().tolist()
 
 
+# Переменная под объект гринлета обновления тегов
 update_greenlet = None
+# Переменная под объект модуля subprocess процесса обновления тегов
 p_kks_all = None
 
 
 @eel.expose
 def update_kks_all():
+    """
+    Процедура запуска гринлета обновления файла тегов kks_all.csv
+    """
     logger.info(f"update_kks_all()")
 
     def update_kks_all_spawn():
+        """
+        Процедура запуска обновления файла тегов kks_all.csv
+        """
         logger.info(f"update_kks_all_spawn()")
         eel.sleep(5)
         command_kks_all_string = f"cd client && ./client -k all -c"
@@ -178,13 +242,13 @@ def update_kks_all():
         logger.info(f'get from OPC_UA all kks and types')
         logger.info(command_kks_all_string)
 
-        args = command_kks_all_string
-        args_tail = command_tail_kks_all_string
+        args = command_kks_all_string  # команда запуска процесса обновления
+        args_tail = command_tail_kks_all_string  # команда получения последнего тега в файле kks_all.csv
 
         try:
             global p_kks_all
             p_kks_all = subprocess.Popen(args, close_fds=True, stdout=subprocess.PIPE, shell=True, preexec_fn=os.setsid, stderr=subprocess.PIPE, bufsize=1, text=True)
-            eel.sleep(1)
+            eel.sleep(1)  # даем небольшое время на наполнение временного файла тегов kks.csv
 
             # line = p_kks_all.stdout.read(1)
             # logger.info(line)
@@ -194,11 +258,12 @@ def update_kks_all():
             # sys.stdout.write(line)
             # sys.stdout.flush()
 
+            # Если процесс завершается сразу, то скорее всего произошла ошибка
             if p_kks_all.poll() == 0:
                 try:
                     lines = p_kks_all.stdout.read()
                     lines_decode = str(lines)
-
+                    # Выводим в веб-приложении ошибку
                     eel.setUpdateStatus(f"Ошибка: {lines_decode}\n", True)
                     return 
 
@@ -219,10 +284,12 @@ def update_kks_all():
                     #     return
 
                 except Exception as exception:
+                    # Если произошла неизвестная ошибка, то ловим и выводим исключение
                     logger.error(exception)
                     eel.setUpdateStatus(f"Ошибка: {exception}\n", True)
                     return
 
+            # Ждем окончание процесса обновления тегов клиентом
             while p_kks_all.poll() != 0:
                 logger.info(p_kks_all)
                 logger.info(p_kks_all.stdout)
@@ -331,15 +398,17 @@ def update_kks_all():
             record = records[1].split(';')[0]
             eel.setUpdateStatus(f"{count}. {record} Успех\n", True)
         except subprocess.CalledProcessError as subprocess_exception:
+            # Если произошла ошибка во время вызова клиента, то ловим и выводим исключение
             logger.error(subprocess_exception)
             eel.setUpdateStatus(f"Ошибка: {subprocess_exception}\n", True)
         except RuntimeError as run_time_exception:
+            # Если произошла ошибка во время выполнении процесса, то ловим и выводим исключение
             logger.error(run_time_exception)
             eel.setUpdateStatus(f"Ошибка: {run_time_exception}\n", True)
             return
 
-        shutil.copy(constants.CLIENT_KKS, constants.DATA_KKS_ALL)
-        # Пытаемся загрузить kks_all.csv если он существует
+        shutil.copy(constants.CLIENT_KKS, constants.DATA_KKS_ALL)  # копируем kks.csv в data/kks_all.csv
+        # Пытаемся загрузить kks_all.csv, если он существует в переменную
         try:
             global KKS_ALL
             KKS_ALL = pd.read_csv(constants.DATA_KKS_ALL, header=None, sep=';')
@@ -348,41 +417,69 @@ def update_kks_all():
 
         eel.setUpdateStatus(f"Обновление тегов закончено\n", True)
 
+    # Запуск гринлета обновления тегов
     global update_greenlet
+    # Если обновление уже идет, выводим в веб-приложении
     if update_greenlet:
         logger.warning(f"update_greenlet is running")
         eel.setUpdateStatus(f"Обновление тегов уже было начато на сервере\n", True)
         return
+
+    # Запуск процесса обновления тегов через gevent
     update_greenlet = eel.spawn(update_kks_all_spawn)
     eel.gvt.joinall([update_greenlet])
 
 
 @eel.expose
 def update_cancel():
+    """
+    Процедура отмены процесса обновления и уничтожения гринлета gevent
+    """
     logger.info(f"update_cancel()")
     global update_greenlet
     global p_kks_all
     if update_greenlet:
         if p_kks_all:
+            # Убиваем по групповому id, чтобы завершить все дочерние процессы
             os.killpg(os.getpgid(p_kks_all.pid), signal.SIGTERM)
             p_kks_all = None
-        # p_kks_all.kill()
         eel.gvt.killall([update_greenlet])
         logger.info(f"update_greenlet has been killed")
         eel.setUpdateStatus(f"Обновление тегов прервано пользователем\n", True)
         update_greenlet = None
 
 
+# Переменная под объект гринлета выполнения запроса по срезам тегов
 signals_greenlet = None
 
 
 @eel.expose
 def get_signals_data(types_list, mask_list, kks_list, quality, date, date_deep_search):
+    """
+    Функция запуска гринлета выполнения запроса по срезам тегов
+    :param types_list: массив выбранных пользователем типов данных
+    :param mask_list: массив маск шаблонов поиска regex
+    :param kks_list: массив kks напрямую, указанные пользователем
+    :param quality: массив кодов качества, указанные пользователем
+    :param date: дата, указанная пользователем в запросе
+    :param date_deep_search: дата глубины поиска данных в архивах
+    :return: json объект для заполнения таблицы срезов тегов
+    """
     logger.info(f"get_signals_data({types_list} ,{mask_list}, {kks_list}, {quality}, {date}, {date_deep_search})")
 
     def get_signals_data_spawn(types_list, mask_list, kks_list, quality, date, date_deep_search):
+        """
+        Функция запуска выполнения запроса по срезам тегов
+        :param types_list: массив выбранных пользователем типов данных
+        :param mask_list: массив маск шаблонов поиска regex
+        :param kks_list: массив kks напрямую, указанные пользователем
+        :param quality: массив кодов качества, указанные пользователем
+        :param date: дата, указанная пользователем в запросе
+        :param date_deep_search: дата глубины поиска данных в архивах
+        :return: json объект для заполнения таблицы срезов тегов
+        """
         logger.info(f"get_signals_data_spawn({types_list} ,{mask_list}, {kks_list}, {quality}, {date}, {date_deep_search})")
-        error_flag = False
+        error_flag = False  # флаг ошибки поиска в архивах
 
         eel.setUpdateSignalsRequestStatus(f"Формирование списка kks сигналов\n")
         kks_requested_list = get_kks(types_list, mask_list, kks_list)
@@ -427,9 +524,11 @@ def get_signals_data(types_list, mask_list, kks_list, quality, date, date_deep_s
             try:
                 subprocess.run(args, capture_output=True, shell=True, check=True)
             except subprocess.CalledProcessError as e:
+                # Если произошла ошибка во время вызова клиента, то ловим и выводим исключение
                 logger.error(e)
                 return f"Произошла ошибка {str(e)}"
             except RuntimeError as run_time_exception:
+                # Если произошла ошибка во время выполнении процесса, то ловим и выводим исключение
                 logger.error(run_time_exception)
                 eel.setUpdateSignalsRequestStatus(f"Ошибка: {run_time_exception}\n")
                 return
@@ -479,9 +578,11 @@ def get_signals_data(types_list, mask_list, kks_list, quality, date, date_deep_s
                         try:
                             subprocess.run(args, capture_output=True, shell=True, check=True)
                         except subprocess.CalledProcessError as e:
+                            # Если произошла ошибка во время вызова клиента, то ловим и выводим исключение
                             logger.error(e)
                             return f"Произошла ошибка {str(e)}"
                         except RuntimeError as run_time_exception:
+                            # Если произошла ошибка во время выполнении процесса, то ловим и выводим исключение
                             logger.error(run_time_exception)
                             eel.setUpdateSignalsRequestStatus(f"Ошибка: {run_time_exception}\n")
                             return
@@ -498,8 +599,6 @@ def get_signals_data(types_list, mask_list, kks_list, quality, date, date_deep_s
                         if delta > deep_search_in_hour:
                             logger.info(f"За заданный период поиска в часах ({deep_search_in_hour}) в архиве ничего не нашлось: {element[0]}->{element[1]}")
                             eel.setUpdateSignalsRequestStatus(f"За заданный период поиска в часах ({deep_search_in_hour}) в архиве ничего не нашлось: {element[0]}->{element[1]}\n")
-                            # logger.info(f'За год не нашлось: {element[0]}->{element[1]}')
-                            # eel.setUpdateSignalsRequestStatus(f"За год не нашлось: {element[0]}->{element[1]}\n")
                             error_flag = True
                             break
                     except OverflowError:
@@ -528,6 +627,7 @@ def get_signals_data(types_list, mask_list, kks_list, quality, date, date_deep_s
                 f"SELECT * from {constants.CLIENT_COMMON_DATA_TABLE}",
                 con_common_data, parse_dates=['t'])
         except Exception as e:
+            # Если произошла ошибка с sqlite, то ловим и выводим исключение
             logger.error(f"{constants.CLIENT_COMMON_DATA_TABLE} is empty: {e}")
             eel.setUpdateSignalsRequestStatus(f"Никаких данных за год не нашлось\n")
             return f"Никаких данных за год не нашлось"
@@ -562,6 +662,9 @@ def get_signals_data(types_list, mask_list, kks_list, quality, date, date_deep_s
 
 @eel.expose
 def signals_data_cancel():
+    """
+    Процедура отмены процесса выполнения запросов срезов и уничтожения гринлета gevent
+    """
     logger.info(f"signals_data_cancel()")
     global signals_greenlet
     if signals_greenlet:
@@ -569,14 +672,33 @@ def signals_data_cancel():
         signals_greenlet = None
 
 
+# Переменная под объект гринлета выполнения запроса сетки
 grid_greenlet = None
 
 
 @eel.expose
 def get_grid_data(kks, date_begin, date_end, interval, dimension):
+    """
+    Функция запуска гринлета выполнения запроса сетки
+    :param kks: массив kks
+    :param date_begin: начальная дата сетки
+    :param date_end: конечная дата сетки
+    :param interval: интервал
+    :param dimension: размерность интервала [день, час, минута, секунда]
+    :return: json объект для заполнения таблицы сеток
+    """
     logger.info(f"get_grid_data({kks}, {date_begin}, {date_end}, {interval}, {dimension})")
 
     def get_grid_data_spawn(kks, date_begin, date_end, interval, dimension):
+        """
+        Функция запуска выполнения запроса сетки
+        :param kks: массив kks
+        :param date_begin: начальная дата сетки
+        :param date_end: конечная дата сетки
+        :param interval: интервал
+        :param dimension: размерность интервала [день, час, минута, секунда]
+        :return: json объект для заполнения таблицы сеток
+        """
         logger.info(f"get_grid_data_spawn({kks}, {date_begin}, {date_end}, {interval}, {dimension})")
         # Сохранение датчика с KKS
         eel.setUpdateGridRequestStatus(f"Сохранение датчиков KKS\n")
@@ -609,9 +731,11 @@ def get_grid_data(kks, date_begin, date_end, interval, dimension):
             subprocess.run(args, capture_output=True, shell=True, check=True)
             eel.setProgressBarGrid(10)
         except subprocess.CalledProcessError as subprocess_exception:
+            # Если произошла ошибка во время вызова клиента, то ловим и выводим исключение
             logger.error(subprocess_exception)
             return f"Произошла ошибка {str(subprocess_exception)}"
         except RuntimeError as run_time_exception:
+            # Если произошла ошибка во время выполнении процесса, то ловим и выводим исключение
             logger.error(run_time_exception)
             eel.setUpdateGridRequestStatus(f"Ошибка: {run_time_exception}\n")
             return
@@ -627,11 +751,13 @@ def get_grid_data(kks, date_begin, date_end, interval, dimension):
             subprocess.run(args, capture_output=True, shell=True, check=True)
             eel.setProgressBarGrid(50)
         except subprocess.CalledProcessError as subprocess_exception:
+            # Если произошла ошибка во время вызова клиента, то ловим и выводим исключение
             logger.error(subprocess_exception)
             if "ValueError: sampling_period is greater than the duration between start and end" in str(subprocess_exception):
                 logger.error("интервал больше, чем дата начала и конца")
                 return f"интервал больше, чем дата начала и конца"
         except RuntimeError as run_time_exception:
+            # Если произошла ошибка во время выполнении процесса, то ловим и выводим исключение
             logger.error(run_time_exception)
             eel.setUpdateGridRequestStatus(f"Ошибка: {run_time_exception}\n")
             return
@@ -681,6 +807,10 @@ def get_grid_data(kks, date_begin, date_end, interval, dimension):
 
 @eel.expose
 def grid_data_cancel():
+    """
+    Процедура отмены процесса выполнения запросов сетки и уничтожения гринлета gevent
+    :return:
+    """
     logger.info(f"grid_data_cancel()")
     global grid_greenlet
     if grid_greenlet:

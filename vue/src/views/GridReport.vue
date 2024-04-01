@@ -3,7 +3,13 @@ import { FilterMatchMode } from 'primevue/api'
 import Multiselect from '@vueform/multiselect'
 
 import { ref, onMounted, onUnmounted, onBeforeUnmount, computed } from 'vue'
-import { getKKSFilterByMasks, getTypesOfSensors, getKKSByMasksForTable, getGrid, cancelGrid } from '../stores'
+import {
+  getKKSFilterByMasks,
+  getTypesOfSensors,
+  getKKSByMasksForTable,
+  getGrid,
+  cancelGrid
+} from '../stores'
 
 import { useApplicationStore } from '../stores/applicationStore'
 
@@ -65,9 +71,7 @@ export default {
     })
 
     const dataCodeTable = ref()
-    // const virtualDataCodeTable = ref()
     const dataTable = ref()
-    // const virtualDataTable = ref()
     const dataTableStatus = ref()
     const columnsTable = ref([])
     const countOfDataTable = ref(0)
@@ -79,23 +83,17 @@ export default {
 
     let delayTimer = null
 
-    // const lazyLoadingCodeTable = ref(false)
-    // const lazyLoadingDataTable = ref(false)
-
-    const loadCodeTableLazyTimeout = ref()
-    const loadDataTableLazyTimeout = ref()
-
     onMounted(async () => {
       await getTypesOfSensors(typesOfSensorsDataOptions)
 
-      window.addEventListener("beforeunload",  async (event) => {
+      window.addEventListener('beforeunload', async (event) => {
         await context.emit('toggleButtonDialogConfigurator')
         await cancelGrid()
       })
     })
 
     onBeforeUnmount(async () => {
-      window.removeEventListener("beforeunload", async (event) => {})
+      window.removeEventListener('beforeunload', async (event) => {})
     })
 
     onUnmounted(async () => {
@@ -122,6 +120,18 @@ export default {
 
     async function onMultiselectSensorsAndTemplateChange(val) {
       console.log('onMultiselectSensorsAndTemplateChange')
+
+      if (
+        window.event.target.id.includes('divRemoveButton') ||
+        window.event.target.id.includes('removeButton') ||
+        window.event.target.id.includes('spanRemoveButton')
+      ) {
+        let lastVal = val[val.length - 1]
+        await onButtonRemoveOptionClick(lastVal)
+        await sensorsAndTemplateValue.value.pop()
+        return
+      }
+
       disabledSensorsAndTemplate.value = true
       isLoadingSensorsAndTemplate.value = true
       chosenSensorsAndTemplate = val
@@ -159,14 +169,12 @@ export default {
 
     async function onMultiselectSensorsAndTemplateSelect(val, option) {
       console.log('onMultiselectSensorsAndTemplateSelect')
-      console.log(val)
-      console.log(option)
+      return
     }
 
     async function onMultiselectSensorsAndTemplateDeselect(val, option) {
       console.log('onMultiselectSensorsAndTemplateDeselect')
-      console.log(val)
-      console.log(option)
+      return
     }
 
     async function onRequestButtonClick() {
@@ -215,11 +223,7 @@ export default {
       let columnsTableArray = [{ field: 'Метка времени', header: 'Метка времени' }]
 
       let chosenSensors = ref([])
-      await getKKSByMasksForTable(
-        chosenSensors,
-        chosenTypesOfSensorsData,
-        chosenSensorsAndTemplate
-      )
+      await getKKSByMasksForTable(chosenSensors, chosenTypesOfSensorsData, chosenSensorsAndTemplate)
       console.log(chosenSensors.value)
       for (const [index, element] of chosenSensors.value.entries()) {
         codeTableArray.push({ '№': index, 'Обозначение сигнала': element })
@@ -303,34 +307,20 @@ export default {
           'bg-danger text-white': applicationStore.badCode.includes(
             dataTableStatus.value[index][String(field)]
           ),
-          'bg-warning text-white': dataTableStatus.value[index][String(field)] === 'missed' || dataTableStatus.value[index][String(field)] === 'NaN'
+          'bg-warning text-white':
+            dataTableStatus.value[index][String(field)] === 'missed' ||
+            dataTableStatus.value[index][String(field)] === 'NaN'
         }
       ]
     }
 
-    // const loadCodeTableLazy = (event) => {
-    //   !lazyLoadingCodeTable.value && (lazyLoadingCodeTable.value = true)
-    //
-    //   if (loadCodeTableLazyTimeout.value) {
-    //     clearTimeout(loadCodeTableLazyTimeout.value)
-    //   }
-    //
-    //   loadCodeTableLazyTimeout.value = setTimeout(() => {
-    //     let _virtualDataCodeTable = [...dataCodeTable.value]
-    //     let { first, last } = event
-    //
-    //     const loadedDataCodeTable = dataCodeTable.value.slice(first, last)
-    //     Array.prototype.splice.apply(_virtualDataCodeTable, [...[first, last - first], ...loadedDataCodeTable])
-    //
-    //     virtualDataCodeTable.value = _virtualDataCodeTable
-    //     lazyLoadingCodeTable.value = false
-    //
-    //   }, 1000)
-    // }
-
-    // const loadDataTableLazy = (event) => {
-    //   !lazyLoadingDataTable.value && (lazyLoadingDataTable.value = true)
-    // }
+    function onButtonRemoveOptionClick(option) {
+      let index = sensorsAndTemplateOptions.value[0].options.indexOf(option)
+      if (index >= 0) {
+        sensorsAndTemplateOptions.value[0].options.splice(index, 1)
+      }
+      console.log(sensorsAndTemplateOptions.value[0].options)
+    }
 
     return {
       typesOfSensorsDataValue,
@@ -373,6 +363,7 @@ export default {
       onButtonDownloadCsvClick,
       onButtonDownloadPdfClick,
       statusClass,
+      onButtonRemoveOptionClick
     }
   }
 }
@@ -426,7 +417,25 @@ export default {
             @search-change="onMultiselectSensorsAndTemplateSearchChange"
             @select="onMultiselectSensorsAndTemplateSelect"
             @deselect="onMultiselectSensorsAndTemplateDeselect"
-          ></Multiselect>
+          >
+            <template v-slot:option="{ option }">
+              <div class="multiselect-options">
+                <span class="multiselect-tag-wrapper">{{ option.label }}</span>
+              </div>
+              <div :id="'divRemoveButton' + option.label" style="margin: 0 0 0 auto">
+                <Button
+                  v-if="sensorsAndTemplateOptions[0].options.includes(option.label)"
+                  :id="'removeButton' + option.label"
+                  class="multiselect-tag-remove"
+                >
+                  <span
+                    :id="'spanRemoveButton' + option.label"
+                    class="multiselect-tag-remove-icon"
+                  ></span>
+                </Button>
+              </div>
+            </template>
+          </Multiselect>
         </div>
       </div>
       <div class="row">
@@ -536,7 +545,9 @@ export default {
             rows="10"
             :cols="statusRequestCol"
             readonly
-            :style="{ resize: 'none', 'overflow-y': scroll,  width: '83%' }">{{ statusRequestTextArea }}</TextArea>
+            :style="{ resize: 'none', 'overflow-y': scroll, width: '83%' }"
+            >{{ statusRequestTextArea }}</TextArea
+          >
         </div>
       </div>
       <div class="row" style="padding-bottom: 20px">
@@ -550,8 +561,7 @@ export default {
             :virtualScrollerOptions="{ itemSize: 50 }"
             tableStyle="min-width: 50rem"
           >
-            <Column field="№" header="№" sortable style="width: 35%">
-            </Column>
+            <Column field="№" header="№" sortable style="width: 35%"> </Column>
             <Column
               field="Обозначение сигнала"
               header="Обозначение сигнала"

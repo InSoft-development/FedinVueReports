@@ -37,16 +37,16 @@ app.use(createPinia())
 app.use(router)
 app.use(VueSidebarMenu)
 app.use(PrimeVue, {
-    locale: {
-        ...defaultOptions.locale,
-        startsWith: 'Начинается с',
-        contains: 'Содержит',
-        notContains: 'Не содержит',
-        endsWith: 'Кончается на',
-        equals: '=',
-        notEquals: '!=',
-        noFilter: 'Без фильтрации'
-    }
+  locale: {
+    ...defaultOptions.locale,
+    startsWith: 'Начинается с',
+    contains: 'Содержит',
+    notContains: 'Не содержит',
+    endsWith: 'Кончается на',
+    equals: '=',
+    notEquals: '!=',
+    noFilter: 'Без фильтрации'
+  }
 })
 // app.use(PrimeVue)
 app.use(ConfirmationService)
