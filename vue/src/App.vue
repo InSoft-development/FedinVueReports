@@ -220,6 +220,7 @@ export default {
                   id="ip-opc-server-address"
                   pattern="(\b25[0-5]|\b2[0-4][0-9]|\b[01]?[0-9][0-9]?)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}"
                   required
+                  :disabled="statusUpdateButtonActive"
                 >
                 </InputText>
                 <label for="ip-opc-server-address">IP адрес сервера OPC UA</label>
@@ -237,13 +238,14 @@ export default {
                   :step="1"
                   :allow-empty="true"
                   :aria-label="portOPC"
+                  :disabled="statusUpdateButtonActive"
                 >
                 </InputNumber>
                 <label for="port-opc-server-address">Порт сервера OPC UA</label>
               </FloatLabel>
             </div>
             <div class="col">
-              <Button @click="changeConfig">Сохранить</Button>
+              <Button @click="changeConfig" :disabled="statusUpdateButtonActive">Сохранить</Button>
             </div>
           </div>
           <hr />

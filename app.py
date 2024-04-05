@@ -28,7 +28,11 @@ from dateutil.parser import parse
 from utils.correct_start import check_correct_application_structure
 import utils.constants_and_paths as constants
 
+from jinja.pylib.get_template import render_slice, render_grid
+
 import eel
+
+from io import StringIO
 
 VERSION = '1.0.0'
 
@@ -247,7 +251,14 @@ def update_kks_all():
 
         try:
             global p_kks_all
-            p_kks_all = subprocess.Popen(args, close_fds=True, stdout=subprocess.PIPE, shell=True, preexec_fn=os.setsid, stderr=subprocess.PIPE, bufsize=1, text=True)
+            # with open('test', "w+") as outfile:
+            out = open('out.log', 'w+')
+            err = open('err.log', 'w+')
+            # p_kks_all = subprocess.Popen(args, stdout=out, shell=True, stderr=err)
+
+            p_kks_all = subprocess.Popen(args, stdout=out, shell=True, preexec_fn=os.setsid, stderr=err)
+            # p_kks_all = subprocess.Popen(args, close_fds=True, stdout=outfile, shell=True,
+            #                              preexec_fn=os.setsid, stderr=subprocess.PIPE, bufsize=1, text=True)
             eel.sleep(1)  # даем небольшое время на наполнение временного файла тегов kks.csv
 
             # line = p_kks_all.stdout.read(1)
@@ -262,10 +273,12 @@ def update_kks_all():
             if p_kks_all.poll() == 0:
                 try:
                     lines = p_kks_all.stdout.read()
+                    # lines = outfile.read()
+                    logger.info(lines)
                     lines_decode = str(lines)
                     # Выводим в веб-приложении ошибку
                     eel.setUpdateStatus(f"Ошибка: {lines_decode}\n", True)
-                    return 
+                    return
 
                     # if "Connect failed with status BadTimeout" in lines_decode:
                     #     eel.setUpdateStatus(f"Ошибка: {lines_decode}\n", True)
@@ -293,6 +306,13 @@ def update_kks_all():
             while p_kks_all.poll() != 0:
                 logger.info(p_kks_all)
                 logger.info(p_kks_all.stdout)
+
+
+
+
+                # logger.info(outfile.read())
+
+
 
                 # line = p_kks_all.stdout.read(1)
                 # logger.info(line)
@@ -381,6 +401,8 @@ def update_kks_all():
                 #     return
                 # except TimeoutExpired:
 
+                # Последний выкаченный тег
+
                 p_tail = subprocess.Popen(args_tail, stdout=subprocess.PIPE, shell=True)
                 out, err = p_tail.communicate()
                 records = out.decode('utf-8').split('\n')
@@ -441,10 +463,11 @@ def update_cancel():
     if update_greenlet:
         if p_kks_all:
             # Убиваем по групповому id, чтобы завершить все дочерние процессы
-            os.killpg(os.getpgid(p_kks_all.pid), signal.SIGTERM)
+            os.killpg(os.getpgid(p_kks_all.pid), signal.SIGINT)
+            # os.kill(p_kks_all.pid, signal.SIGINT)
             p_kks_all = None
         eel.gvt.killall([update_greenlet])
-        logger.info(f"update_greenlet has been killed")
+        logger.info(f"update_greenlet убит")
         eel.setUpdateStatus(f"Обновление тегов прервано пользователем\n", True)
         update_greenlet = None
 
@@ -515,7 +538,7 @@ def get_signals_data(types_list, mask_list, kks_list, quality, date, date_deep_s
             command_string = f"cd client && ./client -b {command_datetime_begin_time} -e " \
                              f"{command_datetime_end_time} -p 100 -t 10000 -r -xw"
 
-            logger.info(f'get OPC_UA: {element[0]}->{element[1]}')
+            logger.info(f'Получение по OPC UA: {element[0]}->{element[1]}')
             logger.info(command_string)
 
             eel.setUpdateSignalsRequestStatus(f"Получение по OPC UA: {element[0]}->{element[1]}\n")
@@ -548,7 +571,7 @@ def get_signals_data(types_list, mask_list, kks_list, quality, date, date_deep_s
             logger.info(df_sqlite)
             # Если не нашли, то расширяем поиск:
             if df_sqlite.empty:
-                logger.info(f"{constants.CLIENT_DATA} is empty")
+                logger.info(f"{constants.CLIENT_DATA} пуст")
                 eel.setUpdateSignalsRequestStatus(f"Расширение поиска в архивах...\n")
 
                 # Получаем предельное время в часах для поиска в глубину в архивах
@@ -567,7 +590,7 @@ def get_signals_data(types_list, mask_list, kks_list, quality, date, date_deep_s
 
                         command_string = f"cd client && ./client -b {command_datetime_begin_time} -e " \
                                          f"{command_datetime_end_time} -p 100 -t 10000 -xw"
-                        logger.info(f'get OPC_UA: {element[0]}->{element[1]}')
+                        logger.info(f'Получение по OPC UA: {element[0]}->{element[1]}')
                         logger.info(command_string)
 
                         eel.setUpdateSignalsRequestStatus(f"Получение по OPC UA: {element[0]}->{element[1]}\n"
@@ -615,10 +638,10 @@ def get_signals_data(types_list, mask_list, kks_list, quality, date, date_deep_s
                 logger.info(con_common_data)
                 df_sqlite.to_sql(f'{constants.CLIENT_COMMON_DATA_TABLE}', con_common_data, if_exists='append', index=False)
                 con_common_data.close()
-                logger.info(f'successfully completed: {element[0]}->{element[1]}')
+                logger.info(f'Успешно завершено: {element[0]}->{element[1]}')
                 eel.setUpdateSignalsRequestStatus(f"Успешно завершено: {element[0]}->{element[1]}\n")
             error_flag = False
-            eel.setProgressBarSignals(int((i+1)/len(decart_product) * 100))
+            eel.setProgressBarSignals(int((i+1)/len(decart_product) * 100 * 0.9))  # 0.9 для масштабирования max в 90%
 
         try:
             con_common_data = sqlite3.connect(constants.CLIENT_COMMON_DATA)
@@ -643,20 +666,36 @@ def get_signals_data(types_list, mask_list, kks_list, quality, date, date_deep_s
                   'Качество': df_sqlite['status'],
                   'Код качества': list(map(lambda x: constants.QUALITY_DICT[x], df_sqlite['status'].to_list()))})
         df_report.to_csv(constants.CSV_SIGNALS, index=False, encoding='utf-8')
-        logger.info("data frame has been formed")
+        logger.info("Датафрейм сформирован")
         shutil.copy(constants.CSV_SIGNALS, f'{constants.WEB_DIR}signals_slice.csv')
-        logger.info("data frame is accessed for download")
+        logger.info("Датафрейм доступен для выкачки")
         df_report['Дата и время измерения'] = df_report['Дата и время измерения'].dt.strftime('%Y-%m-%d %H:%M:%S')
         eel.setUpdateSignalsRequestStatus(f"Запрос успешно завершен\n")
-        return json.loads(df_report.to_json(orient='records'))
+
+        eel.setProgressBarSignals(90)
+        eel.setUpdateSignalsRequestStatus(f"Формирование отчета\n")
+        slice = json.loads(df_report.to_json(orient='records'))
+        render_slice(slice)
+        eel.setUpdateSignalsRequestStatus(f"Отчет сформирован\n")
+
+        return slice
 
     global signals_greenlet
-    if signals_greenlet:
+    global analog_signals_greenlet
+    global discrete_signals_greenlet
+    global grid_greenlet
+    global analog_grid_greenlet
+    global discrete_grid_greenlet
+    global bounce_greenlet
+    started_greenlet = [signals_greenlet, analog_signals_greenlet, discrete_signals_greenlet,
+                        grid_greenlet, analog_grid_greenlet, discrete_grid_greenlet, bounce_greenlet]
+    if any(started_greenlet):
         logger.warning(f"signals_greenlet is running")
         return f"Запрос уже выполняется для другого клиента. Попробуйте выполнить запрос позже"
     signals_greenlet = eel.spawn(get_signals_data_spawn, types_list, mask_list, kks_list, quality, date, date_deep_search)
     eel.gvt.joinall([signals_greenlet])
-    # if signals_greenlet:
+
+    logger.info("Формирование отчета")
     return signals_greenlet.value
 
 
@@ -719,7 +758,7 @@ def get_grid_data(kks, date_begin, date_end, interval, dimension):
         command_string = f'cd client && python ./slicer_for_streamlit.py -d {delta_interval} ' \
                          f'-t \"{command_datetime_begin_time}\" \"{command_datetime_end_time}\"'
 
-        logger.info("get OPC_UA")
+        logger.info("Получение по OPC UA")
         logger.info(command_string_binary)
 
         eel.setUpdateGridRequestStatus(f"Получение по OPC UA валидных тегов\n")
@@ -740,7 +779,7 @@ def get_grid_data(kks, date_begin, date_end, interval, dimension):
             eel.setUpdateGridRequestStatus(f"Ошибка: {run_time_exception}\n")
             return
 
-        logger.info("get slices")
+        logger.info("Получение срезов")
         logger.info(command_string)
 
         eel.setUpdateGridRequestStatus(f"Получение срезов\n")
@@ -785,18 +824,82 @@ def get_grid_data(kks, date_begin, date_end, interval, dimension):
         eel.setUpdateGridRequestStatus(f"Сохранение таблиц отчета\n")
 
         df_report.to_csv(constants.CSV_GRID, index=False, encoding='utf-8')
-        logger.info("data frame has been formed")
+        logger.info("Датафрейм сформирован")
 
         shutil.copy(constants.CSV_GRID, f'{constants.WEB_DIR}grid.csv')
-        logger.info("data frame is accessed for download")
+        logger.info("Датафрейм доступен для выкачки")
 
         # get_report_grid(code_kks, colored_df_list, colored_dict_list, 'аналоговых')
         eel.setUpdateGridRequestStatus(f"Передача данных в веб-приложение...\n")
 
+        eel.setProgressBarGrid(90)
+        eel.setUpdateGridRequestStatus(f"Формирование отчета\n")
+        code = json.loads(pd.DataFrame(data={
+            '№': [i for i in range(len(df_slice_csv.columns.tolist()[1:]))],
+            'Обозначение сигнала': [kks for kks in df_slice_csv.columns.tolist()[1:]]})
+                          .to_json(orient='records'))
+
+        # Разделение таблиц по группам по 5 датчикам
+        separate_count = 1
+        grid_separated_json_list = []
+        status_separated_json_list = []
+
+        grid_separated_json_list_single = []
+        status_separated_json_list_single = []
+
+        temp_df_slice = df_report[['Метка времени']].copy()
+        temp_df_status = df_report_slice[['Метка времени']].copy()
+
+        for kks in df_report.columns.tolist()[1:]:
+            temp_df_slice[kks] = df_report[kks]
+            temp_df_status[kks] = df_report_slice[kks]
+
+            if (separate_count % constants.SEPARATED_COUNT == 0) \
+                    or (separate_count == len(df_report.columns.tolist()[1:])):
+                temp_json_grid = json.loads(temp_df_slice.to_json(orient='records'))
+                temp_json_status = json.loads(temp_df_status.to_json(orient='records'))
+
+                grid_separated_json_list.append(temp_json_grid)
+                status_separated_json_list.append(temp_json_status)
+
+                for index in temp_df_slice.columns.tolist()[1:]:
+                    temp_json_grid_single = json.loads(temp_df_slice[['Метка времени', index]].copy()
+                                                       .to_json(orient='records'))
+                    temp_json_status_single = json.loads(temp_df_status[['Метка времени', index]].copy()
+                                                         .to_json(orient='records'))
+
+                    grid_separated_json_list_single.append(temp_json_grid_single)
+                    status_separated_json_list_single.append(temp_json_status_single)
+
+                temp_df_slice = df_report[['Метка времени']].copy()
+                temp_df_status = df_report_slice[['Метка времени']].copy()
+            separate_count += 1
+        # grid, status = json.loads(df_report.to_json(orient='records')), json.loads(df_report_slice.
+        #                                                                            to_json(orient='records'))
+
+        parameters_of_request = {
+            "date_begin": date_begin,
+            "date_end": date_end,
+            "interval": interval,
+            "dimension": constants.INTERVAL_TO_LOCALE[dimension]
+        }
+
+        render_grid(code, grid_separated_json_list, status_separated_json_list,
+                    grid_separated_json_list_single, status_separated_json_list_single, parameters_of_request)
+        eel.setUpdateGridRequestStatus(f"Отчет сформирован\n")
+
         return json.loads(df_report.to_json(orient='records')), json.loads(df_report_slice.to_json(orient='records'))
 
+    global signals_greenlet
+    global analog_signals_greenlet
+    global discrete_signals_greenlet
     global grid_greenlet
-    if grid_greenlet:
+    global analog_grid_greenlet
+    global discrete_grid_greenlet
+    global bounce_greenlet
+    started_greenlet = [signals_greenlet, analog_signals_greenlet, discrete_signals_greenlet,
+                        grid_greenlet, analog_grid_greenlet, discrete_grid_greenlet, bounce_greenlet]
+    if any(started_greenlet):
         logger.warning(f"grid_greenlet is running")
         return f"Запрос уже выполняется для другого клиента. Попробуйте выполнить запрос позже"
     grid_greenlet = eel.spawn(get_grid_data_spawn, kks, date_begin, date_end, interval, dimension)
@@ -949,9 +1052,9 @@ def get_analog_signals_data(kks, quality, date):
             con_common_data.close()
 
         df_report = pd.DataFrame(
-            columns=['Код сигнала (AKS)', 'Дата и время измерения', 'Значение', 'Качество',
+            columns=['Код сигнала (KKS)', 'Дата и время измерения', 'Значение', 'Качество',
                      'Код качества'],
-            data={'Код сигнала (AKS)': df_sqlite['id'],
+            data={'Код сигнала (KKS)': df_sqlite['id'],
                   'Дата и время измерения': df_sqlite['t'],
                   'Значение': df_sqlite['val'],
                   'Качество': df_sqlite['status'],
@@ -965,12 +1068,23 @@ def get_analog_signals_data(kks, quality, date):
 
         shutil.copy(constants.CSV_ANALOG_SLICES, f'{constants.WEB_DIR}analog_slice.csv')
         logger.info("data frame is accessed for download")
-
         df_report['Дата и время измерения'] = df_report['Дата и время измерения'].dt.strftime('%Y-%m-%d %H:%M:%S')
-        return json.loads(df_report.to_json(orient='records'))
 
+        slice = json.loads(df_report.to_json(orient='records'))
+        render_slice(slice)
+
+        return slice
+
+    global signals_greenlet
     global analog_signals_greenlet
-    if analog_signals_greenlet:
+    global discrete_signals_greenlet
+    global grid_greenlet
+    global analog_grid_greenlet
+    global discrete_grid_greenlet
+    global bounce_greenlet
+    started_greenlet = [signals_greenlet, analog_signals_greenlet, discrete_signals_greenlet,
+                        grid_greenlet, analog_grid_greenlet, discrete_grid_greenlet, bounce_greenlet]
+    if any(started_greenlet):
         logger.warning(f"analog_signals_greenlet is running")
         return f"Запрос уже выполняется для другого клиента. Попробуйте выполнить запрос позже"
 
@@ -1109,9 +1223,9 @@ def get_discrete_signals_data(kks, values, quality, date):
             con_common_data.close()
 
         df_report = pd.DataFrame(
-            columns=['Код сигнала (AKS)', 'Дата и время измерения', 'Значение', 'Качество',
+            columns=['Код сигнала (KKS)', 'Дата и время измерения', 'Значение', 'Качество',
                      'Код качества'],
-            data={'Код сигнала (AKS)': df_sqlite['id'],
+            data={'Код сигнала (KKS)': df_sqlite['id'],
                   'Дата и время измерения': df_sqlite['t'],
                   'Значение': df_sqlite['val'],
                   'Качество': df_sqlite['status'],
@@ -1125,10 +1239,22 @@ def get_discrete_signals_data(kks, values, quality, date):
         logger.info("data frame is accessed for download")
 
         df_report['Дата и время измерения'] = df_report['Дата и время измерения'].dt.strftime('%Y-%m-%d %H:%M:%S')
-        return json.loads(df_report.to_json(orient='records'))
 
+        slice = json.loads(df_report.to_json(orient='records'))
+        render_slice(slice)
+
+        return slice
+
+    global signals_greenlet
+    global analog_signals_greenlet
     global discrete_signals_greenlet
-    if discrete_signals_greenlet:
+    global grid_greenlet
+    global analog_grid_greenlet
+    global discrete_grid_greenlet
+    global bounce_greenlet
+    started_greenlet = [signals_greenlet, analog_signals_greenlet, discrete_signals_greenlet,
+                        grid_greenlet, analog_grid_greenlet, discrete_grid_greenlet, bounce_greenlet]
+    if any(started_greenlet):
         logger.warning(f"discrete_signals_greenlet is running")
         return f"Запрос уже выполняется для другого клиента. Попробуйте выполнить запрос позже"
 
@@ -1217,12 +1343,72 @@ def get_analog_grid_data(kks, date_begin, date_end, interval, dimension):
         shutil.copy(constants.CSV_ANALOG_GRID, f'{constants.WEB_DIR}analog_grid.csv')
         logger.info("data frame is accessed for download")
 
-        # get_report_grid(code_kks, colored_df_list, colored_dict_list, 'аналоговых')
+        eel.setProgressBarAnalogSignals(90)
+        code = json.loads(pd.DataFrame(data={
+            '№': [i for i in range(len(df_slice_csv.columns.tolist()[1:]))],
+            'Обозначение сигнала': [kks for kks in df_slice_csv.columns.tolist()[1:]]})
+                          .to_json(orient='records'))
+
+        # Разделение таблиц по группам по 5 датчикам
+        separate_count = 1
+        grid_separated_json_list = []
+        status_separated_json_list = []
+
+        grid_separated_json_list_single = []
+        status_separated_json_list_single = []
+
+        temp_df_slice = df_report[['Метка времени']].copy()
+        temp_df_status = df_report_slice[['Метка времени']].copy()
+
+        for kks in df_report.columns.tolist()[1:]:
+            temp_df_slice[kks] = df_report[kks]
+            temp_df_status[kks] = df_report_slice[kks]
+
+            if (separate_count % constants.SEPARATED_COUNT == 0) \
+                    or (separate_count == len(df_report.columns.tolist()[1:])):
+                temp_json_grid = json.loads(temp_df_slice.to_json(orient='records'))
+                temp_json_status = json.loads(temp_df_status.to_json(orient='records'))
+
+                grid_separated_json_list.append(temp_json_grid)
+                status_separated_json_list.append(temp_json_status)
+
+                for index in temp_df_slice.columns.tolist()[1:]:
+                    temp_json_grid_single = json.loads(temp_df_slice[['Метка времени', index]].copy()
+                                                       .to_json(orient='records'))
+                    temp_json_status_single = json.loads(temp_df_status[['Метка времени', index]].copy()
+                                                         .to_json(orient='records'))
+
+                    grid_separated_json_list_single.append(temp_json_grid_single)
+                    status_separated_json_list_single.append(temp_json_status_single)
+
+                temp_df_slice = df_report[['Метка времени']].copy()
+                temp_df_status = df_report_slice[['Метка времени']].copy()
+            separate_count += 1
+        # grid, status = json.loads(df_report.to_json(orient='records')), json.loads(df_report_slice.
+        #                                                                            to_json(orient='records'))
+
+        parameters_of_request = {
+            "date_begin": date_begin,
+            "date_end": date_end,
+            "interval": interval,
+            "dimension": constants.INTERVAL_TO_LOCALE[dimension]
+        }
+
+        render_grid(code, grid_separated_json_list, status_separated_json_list,
+                    grid_separated_json_list_single, status_separated_json_list_single, parameters_of_request)
 
         return json.loads(df_report.to_json(orient='records')), json.loads(df_report_slice.to_json(orient='records'))
 
+    global signals_greenlet
+    global analog_signals_greenlet
+    global discrete_signals_greenlet
+    global grid_greenlet
     global analog_grid_greenlet
-    if analog_grid_greenlet:
+    global discrete_grid_greenlet
+    global bounce_greenlet
+    started_greenlet = [signals_greenlet, analog_signals_greenlet, discrete_signals_greenlet,
+                        grid_greenlet, analog_grid_greenlet, discrete_grid_greenlet, bounce_greenlet]
+    if any(started_greenlet):
         logger.warning(f"analog_grid_greenlet is running")
         return f"Запрос уже выполняется для другого клиента. Попробуйте выполнить запрос позже"
 
@@ -1232,7 +1418,7 @@ def get_analog_grid_data(kks, date_begin, date_end, interval, dimension):
     return analog_grid_greenlet.value
 
 
-dicrete_grid_greenlet = None
+discrete_grid_greenlet = None
 
 
 @eel.expose
@@ -1310,19 +1496,79 @@ def get_discrete_grid_data(kks, date_begin, date_end, interval, dimension):
         shutil.copy(constants.CSV_DISCRETE_GRID, f'{constants.WEB_DIR}discrete_grid.csv')
         logger.info("data frame is accessed for download")
 
-        # get_report_grid(code_kks, colored_df_list, colored_dict_list, 'дискретных')
+        eel.setProgressBarDiscreteSignals(90)
+        code = json.loads(pd.DataFrame(data={
+            '№': [i for i in range(len(df_slice_csv.columns.tolist()[1:]))],
+            'Обозначение сигнала': [kks for kks in df_slice_csv.columns.tolist()[1:]]})
+                          .to_json(orient='records'))
+
+        # Разделение таблиц по группам по 5 датчикам
+        separate_count = 1
+        grid_separated_json_list = []
+        status_separated_json_list = []
+
+        grid_separated_json_list_single = []
+        status_separated_json_list_single = []
+
+        temp_df_slice = df_report[['Метка времени']].copy()
+        temp_df_status = df_report_slice[['Метка времени']].copy()
+
+        for kks in df_report.columns.tolist()[1:]:
+            temp_df_slice[kks] = df_report[kks]
+            temp_df_status[kks] = df_report_slice[kks]
+
+            if (separate_count % constants.SEPARATED_COUNT == 0) \
+                    or (separate_count == len(df_report.columns.tolist()[1:])):
+                temp_json_grid = json.loads(temp_df_slice.to_json(orient='records'))
+                temp_json_status = json.loads(temp_df_status.to_json(orient='records'))
+
+                grid_separated_json_list.append(temp_json_grid)
+                status_separated_json_list.append(temp_json_status)
+
+                for index in temp_df_slice.columns.tolist()[1:]:
+                    temp_json_grid_single = json.loads(temp_df_slice[['Метка времени', index]].copy()
+                                                       .to_json(orient='records'))
+                    temp_json_status_single = json.loads(temp_df_status[['Метка времени', index]].copy()
+                                                         .to_json(orient='records'))
+
+                    grid_separated_json_list_single.append(temp_json_grid_single)
+                    status_separated_json_list_single.append(temp_json_status_single)
+
+                temp_df_slice = df_report[['Метка времени']].copy()
+                temp_df_status = df_report_slice[['Метка времени']].copy()
+            separate_count += 1
+        # grid, status = json.loads(df_report.to_json(orient='records')), json.loads(df_report_slice.
+        #                                                                            to_json(orient='records'))
+
+        parameters_of_request = {
+            "date_begin": date_begin,
+            "date_end": date_end,
+            "interval": interval,
+            "dimension": constants.INTERVAL_TO_LOCALE[dimension]
+        }
+
+        render_grid(code, grid_separated_json_list, status_separated_json_list,
+                    grid_separated_json_list_single, status_separated_json_list_single, parameters_of_request)
 
         return json.loads(df_report.to_json(orient='records')), json.loads(df_report_slice.to_json(orient='records'))
 
+    global signals_greenlet
+    global analog_signals_greenlet
     global discrete_signals_greenlet
-    if discrete_signals_greenlet:
-        logger.warning(f"discrete_signals_greenlet is running")
+    global grid_greenlet
+    global analog_grid_greenlet
+    global discrete_grid_greenlet
+    global bounce_greenlet
+    started_greenlet = [signals_greenlet, analog_signals_greenlet, discrete_signals_greenlet,
+                        grid_greenlet, analog_grid_greenlet, discrete_grid_greenlet, bounce_greenlet]
+    if any(started_greenlet):
+        logger.warning(f"discrete_grid_greenlet is running")
         return f"Запрос уже выполняется для другого клиента. Попробуйте выполнить запрос позже"
 
-    discrete_signals_greenlet = eel.spawn(get_discrete_grid_data_spawn, kks, date_begin, date_end, interval, dimension)
-    eel.gvt.joinall([discrete_signals_greenlet])
-    # if discrete_signals_greenlet:
-    return discrete_signals_greenlet.value
+    discrete_grid_greenlet = eel.spawn(get_discrete_grid_data_spawn, kks, date_begin, date_end, interval, dimension)
+    eel.gvt.joinall([discrete_grid_greenlet])
+    # if discrete_grid_greenlet:
+    return discrete_grid_greenlet.value
 
 
 bounce_greenlet = None
@@ -1390,8 +1636,16 @@ def get_bounce_signals_data(template, date, interval, dimension, top):
         logger.info(df_counts[:int(top)])
         return json.loads(df_counts[:int(top)].to_json(orient='records'))
 
+    global signals_greenlet
+    global analog_signals_greenlet
+    global discrete_signals_greenlet
+    global grid_greenlet
+    global analog_grid_greenlet
+    global discrete_grid_greenlet
     global bounce_greenlet
-    if bounce_greenlet:
+    started_greenlet = [signals_greenlet, analog_signals_greenlet, discrete_signals_greenlet,
+                        grid_greenlet, analog_grid_greenlet, discrete_grid_greenlet, bounce_greenlet]
+    if any(started_greenlet):
         logger.warning(f"bounce_greenlet is running")
         return f"Запрос уже выполняется для другого клиента. Попробуйте выполнить запрос позже"
 

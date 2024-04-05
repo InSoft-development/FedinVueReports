@@ -276,7 +276,14 @@ export default {
     }
 
     function onButtonDownloadPdfClick() {
-      return
+      const link = document.createElement('a')
+      const pathSignalsReport = 'report/signals_slice.pdf'
+      link.setAttribute('download', pathSignalsReport)
+      link.setAttribute('type', 'application/octet-stream')
+      link.setAttribute('href', 'report/signals_slice.pdf')
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
     }
 
     function onButtonRemoveOptionClick(option) {

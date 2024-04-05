@@ -51,7 +51,7 @@ export default {
 
       dateTimeEndReport.value = new Date().toLocaleString()
       progressBarBounceSignals.value = '100'
-      progressBarBounceSignalsActive.value = true
+      progressBarBounceSignalsActive.value = false
     }
 
     function setProgressBarBounceSignals(count) {

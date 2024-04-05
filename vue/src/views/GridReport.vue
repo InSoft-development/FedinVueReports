@@ -298,7 +298,14 @@ export default {
     }
 
     function onButtonDownloadPdfClick() {
-      return
+      const link = document.createElement('a')
+      const pathSignalsReport = 'report/grid.zip'
+      link.setAttribute('download', pathSignalsReport)
+      link.setAttribute('type', 'application/octet-stream')
+      link.setAttribute('href', 'report/grid.zip')
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
     }
 
     function statusClass(index, field) {
