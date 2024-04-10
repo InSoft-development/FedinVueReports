@@ -37,6 +37,14 @@ export async function cancelGrid() {
 }
 
 /***
+ * Процедура отмены пользователем запроса дребезга сигналов
+ * @returns {Promise<void>}
+ */
+export async function cancelBounce() {
+  await eel.bounce_data_cancel()()
+}
+
+/***
  * Процедура изменения конфигурации клиента OPC UA
  * @param ipOPC
  * @param portOPC

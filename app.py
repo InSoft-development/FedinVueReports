@@ -28,7 +28,7 @@ from dateutil.parser import parse
 from utils.correct_start import check_correct_application_structure
 import utils.constants_and_paths as constants
 
-from jinja.pylib.get_template import render_slice, render_grid
+from jinja.pylib.get_template import render_slice, render_grid, render_bounce
 
 import eel
 
@@ -194,6 +194,9 @@ def change_opc_server_config(ip, port):
 
     with open(constants.CLIENT_SERVER_CONF, "w") as writefile:
         writefile.write(f"opc.tcp://{ip}:{port}")
+
+    with open(constants.CLIENT_SERVER_CONF, "r") as readfile:
+        eel.setUpdateStatus(f"{readfile.read()}\n", False)
 
 
 @eel.expose
@@ -552,6 +555,7 @@ def get_signals_data(types_list, mask_list, kks_list, quality, date, date_deep_s
                   'Значение': df_sqlite['val'],
                   'Качество': df_sqlite['status'],
                   'Код качества': list(map(lambda x: constants.QUALITY_DICT[x], df_sqlite['status'].to_list()))})
+        df_report.fillna("NaN", inplace=True)
         df_report.to_csv(constants.CSV_SIGNALS, index=False, encoding='utf-8')
         logger.info("Датафрейм сформирован")
         shutil.copy(constants.CSV_SIGNALS, f'{constants.WEB_DIR}signals_slice.csv')
@@ -565,6 +569,8 @@ def get_signals_data(types_list, mask_list, kks_list, quality, date, date_deep_s
         render_slice(slice)
         eel.setUpdateSignalsRequestStatus(f"Отчет сформирован\n")
 
+        eel.setProgressBarSignals(95)
+        eel.setUpdateSignalsRequestStatus(f"Передача данных в веб-приложение...\n")
         return slice
 
     global signals_greenlet
@@ -706,6 +712,9 @@ def get_grid_data(kks, date_begin, date_end, interval, dimension):
             df_report[index] = df_slice_csv[kks]
             df_report_slice[index] = df_slice_status_csv[kks]
 
+        df_report.fillna("NaN", inplace=True)
+        df_report_slice.fillna("NaN", inplace=True)
+
         eel.setProgressBarGrid(70)
 
         logger.info(df_report)
@@ -718,8 +727,6 @@ def get_grid_data(kks, date_begin, date_end, interval, dimension):
 
         shutil.copy(constants.CSV_GRID, f'{constants.WEB_DIR}grid.csv')
         logger.info("Датафрейм доступен для выкачки")
-
-        eel.setUpdateGridRequestStatus(f"Передача данных в веб-приложение...\n")
 
         eel.setProgressBarGrid(90)
         eel.setUpdateGridRequestStatus(f"Формирование отчета\n")
@@ -777,6 +784,9 @@ def get_grid_data(kks, date_begin, date_end, interval, dimension):
                     grid_separated_json_list_single, status_separated_json_list_single, parameters_of_request)
         eel.setUpdateGridRequestStatus(f"Отчет сформирован\n")
 
+        eel.setProgressBarGrid(95)
+        eel.setUpdateGridRequestStatus(f"Передача данных в веб-приложение...\n")
+
         return json.loads(df_report.to_json(orient='records')), json.loads(df_report_slice.to_json(orient='records'))
 
     global signals_greenlet
@@ -791,6 +801,7 @@ def get_grid_data(kks, date_begin, date_end, interval, dimension):
     if any(started_greenlet):
         logger.warning(f"grid_greenlet is running")
         return f"Запрос уже выполняется для другого клиента. Попробуйте выполнить запрос позже"
+
     grid_greenlet = eel.spawn(get_grid_data_spawn, kks, date_begin, date_end, interval, dimension)
     eel.gvt.joinall([grid_greenlet])
     return grid_greenlet.value
@@ -1459,17 +1470,14 @@ bounce_greenlet = None
 
 
 @eel.expose
-def get_bounce_signals_data(template, date, interval, dimension, top):
-    logger.info(f"get_bounce_signals_data({template}, {date}, {interval}, {dimension}, {top})")
+def get_bounce_signals_data(kks, date, interval, dimension, top):
+    logger.info(f"get_bounce_signals_data({kks}, {date}, {interval}, {dimension}, {top})")
 
-    def get_bounce_signals_data_spawn(template, date, interval, dimension, top):
-        logger.info(f"get_bounce_signals_data_spawn({template}, {date}, {interval}, {dimension}, {top})")
-
-        kks = get_discrete_kks_by_mask(template)
-        if not kks:
-            return f"По шаблону ничего не найдено"
+    def get_bounce_signals_data_spawn(kks, date, interval, dimension, top):
+        logger.info(f"get_bounce_signals_data_spawn({kks}, {date}, {interval}, {dimension}, {top})")
 
         # Сохранение датчика с KKS
+        eel.setUpdateBounceRequestStatus(f"Сохранение датчиков KKS\n")
         csv_tag_KKS = pd.DataFrame(data=kks)
         csv_tag_KKS.to_csv(constants.CLIENT_KKS, index=False, header=None)
 
@@ -1484,19 +1492,27 @@ def get_bounce_signals_data(template, date, interval, dimension, top):
         logger.info("get OPC_UA")
         logger.info(command_string)
 
-        eel.setProgressBarBounceSignals(5)
+        eel.setUpdateBounceRequestStatus(f"Получение срезов\n")
+        eel.setProgressBarBounceSignals(20)
 
-        args = command_string
+        args = ["./client", "-b", f"{command_datetime_begin_time}",
+                "-e", f"{command_datetime_end_time}", "-p", "100", "-t", "1", "-xw"]
         try:
-            subprocess.run(args, capture_output=True, shell=True, check=True)
-            eel.setProgressBarBounceSignals(10)
-        except subprocess.CalledProcessError as e:
-            logger.error(e)
-            return f"Произошла ошибка {str(e)}"
+            subprocess.run(args, capture_output=True, cwd=f"{os.getcwd()}{os.sep}client{os.sep}", check=True)
+            eel.setProgressBarBounceSignals(50)
+        except subprocess.CalledProcessError as subprocess_exception:
+            logger.error(subprocess_exception)
+            return f"Произошла ошибка {str(subprocess_exception)}"
+        except RuntimeError as run_time_exception:
+            # Если произошла ошибка во время выполнении процесса, то ловим и выводим исключение
+            logger.error(run_time_exception)
+            eel.setUpdateBounceRequestStatus(f"Ошибка: {run_time_exception}\n")
+            return
 
         logger.info(f'client finished')
 
         # Достаем фрейм из sqlite
+        eel.setUpdateBounceRequestStatus(f"Формирование таблиц отчета\n")
         con_current_data = sqlite3.connect(constants.CLIENT_DATA)
         query_string = f"SELECT * from {constants.CLIENT_DYNAMIC_TABLE}"
 
@@ -1508,6 +1524,7 @@ def get_bounce_signals_data(template, date, interval, dimension, top):
         if df_sqlite.empty:
             msg = "Не нашлось ни одного значения из выбранных датчиков. Возможно интервал слишком мал."
             logger.info(msg)
+            eel.setUpdateBounceRequestStatus(f"{msg}\n")
             return msg
 
         # df_counts = pd.DataFrame(kks, columns=['Наименование датчика'])
@@ -1517,8 +1534,31 @@ def get_bounce_signals_data(template, date, interval, dimension, top):
         df_counts.index.name = 'Наименование датчика'
         df_counts['Наименование датчика'] = df_counts.index.values.tolist()
 
-        logger.info(df_counts[:int(top)])
-        return json.loads(df_counts[:int(top)].to_json(orient='records'))
+        eel.setProgressBarBounceSignals(90)
+        eel.setUpdateBounceRequestStatus(f"Сохранение таблиц отчета\n")
+        df_counts.to_csv(constants.CSV_BOUNCE, index=False, encoding='utf-8')
+        logger.info("Датафрейм сформирован")
+        shutil.copy(constants.CSV_BOUNCE, f'{constants.WEB_DIR}bounce.csv')
+        logger.info("Датафрейм доступен для выкачки")
+
+        eel.setProgressBarBounceSignals(90)
+        eel.setUpdateBounceRequestStatus(f"Формирование отчета\n")
+
+        parameters_of_request = {
+            "date": date,
+            "interval": interval,
+            "dimension": constants.INTERVAL_TO_LOCALE[dimension],
+            "top": top
+        }
+
+        bounce = json.loads(df_counts[:int(top)].to_json(orient='records'))
+        render_bounce(bounce, parameters_of_request)
+        eel.setUpdateBounceRequestStatus(f"Отчет сформирован\n")
+
+        eel.setProgressBarBounceSignals(95)
+        eel.setUpdateBounceRequestStatus(f"Передача данных в веб-приложение...\n")
+
+        return bounce
 
     global signals_greenlet
     global analog_signals_greenlet
@@ -1533,9 +1573,22 @@ def get_bounce_signals_data(template, date, interval, dimension, top):
         logger.warning(f"bounce_greenlet is running")
         return f"Запрос уже выполняется для другого клиента. Попробуйте выполнить запрос позже"
 
-    bounce_greenlet = eel.spawn(get_bounce_signals_data_spawn, template, date, interval, dimension, top)
+    bounce_greenlet = eel.spawn(get_bounce_signals_data_spawn, kks, date, interval, dimension, top)
     eel.gvt.joinall([bounce_greenlet])
     return bounce_greenlet.value
+
+
+@eel.expose
+def bounce_data_cancel():
+    """
+    Процедура отмены процесса выполнения запросов дребезга сигналов и уничтожения гринлета gevent
+    :return:
+    """
+    logger.info(f"bounce_data_cancel()")
+    global bounce_greenlet
+    if bounce_greenlet:
+        eel.gvt.killall([bounce_greenlet])
+        bounce_greenlet = None
 
 
 def server_run_thread():

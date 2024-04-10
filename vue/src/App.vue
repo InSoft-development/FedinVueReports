@@ -14,6 +14,41 @@ import {
 
 export default {
   setup() {
+    // const sidebarMenu = [
+    //   {
+    //     header: 'Меню отчетов',
+    //     hiddenOnCollapse: true
+    //   },
+    //   {
+    //     href: '/',
+    //     title: 'Срез аналоговых сигналов'
+    //   },
+    //   {
+    //     href: '/discrete_signals',
+    //     title: 'Срез дискретных сигналов'
+    //   },
+    //   {
+    //     href: '/analog_grid',
+    //     title: 'Сетка аналоговых сигналов'
+    //   },
+    //   {
+    //     href: '/discrete_grid',
+    //     title: 'Сетка дискретных сигналов'
+    //   },
+    //   {
+    //     href: '/bounce_signals',
+    //     title: 'Дребезг сигналов'
+    //   },
+    //   {
+    //     href: '/signals_report',
+    //     title: 'Срезы сигналов'
+    //   },
+    //   {
+    //     href: '/grid_report',
+    //     title: 'Сетка сигналов'
+    //   }
+    // ]
+
     const sidebarMenu = [
       {
         header: 'Меню отчетов',
@@ -21,31 +56,15 @@ export default {
       },
       {
         href: '/',
-        title: 'Срез аналоговых сигналов'
-      },
-      {
-        href: '/discrete_signals',
-        title: 'Срез дискретных сигналов'
-      },
-      {
-        href: '/analog_grid',
-        title: 'Сетка аналоговых сигналов'
-      },
-      {
-        href: '/discrete_grid',
-        title: 'Сетка дискретных сигналов'
-      },
-      {
-        href: '/bounce_signals',
-        title: 'Дребезг сигналов'
-      },
-      {
-        href: '/signals_report',
         title: 'Срезы сигналов'
       },
       {
         href: '/grid_report',
         title: 'Сетка сигналов'
+      },
+      {
+        href: '/bounce_signals',
+        title: 'Дребезг сигналов'
       }
     ]
 
@@ -121,7 +140,6 @@ export default {
         textSplit[textSplit.length - 1] = statusString
         statusUpdateTextArea.value = textSplit.join('\n')
       }
-      // statusUpdateTextArea.value += String(statusString)
       let textarea = document.getElementById('status-text-area')
       textarea.scrollTop = textarea.scrollHeight
     }

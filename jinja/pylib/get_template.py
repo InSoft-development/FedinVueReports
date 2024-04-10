@@ -34,7 +34,8 @@ def render_slice(json_slice_table):
 
 def render_grid(json_code_table, json_grid_table_list, json_grid_status_table_list,
                 json_grid_table_list_single, json_grid_status_table_list_single, parameters_of_request):
-    logger.info(f"render_grid(json_code_table, json_grid_table, json_grid_status_table)")
+    logger.info(f"render_grid(json_code_table, json_grid_table_list, json_grid_status_table_list,"
+                f"json_grid_table_list_single, json_grid_status_table_list_single, parameters_of_request)")
 
     # Рендерим таблицу обозначений сигналов - шаблон table_code.html
     file_loader = FileSystemLoader(searchpath=constants.JINJA_TEMPLATE_GRID)
@@ -53,7 +54,7 @@ def render_grid(json_code_table, json_grid_table_list, json_grid_status_table_li
     tm = env.get_template('sensor.html')
     sensor_html_list = [tm.render(rows=sensor_table, status=sensor_status_table,
                                   data_x=[row["Метка времени"] for row in sensor_table],
-                                  data_y=[row[list(row)[-1]] for row in sensor_table],
+                                  data_y=[row[list(row)[-1]] if row[list(row)[-1]] != "NaN" else 0 for row in sensor_table],
                                   parameters=parameters_of_request,
                                   sensor_title=json_code_table[index]["Обозначение сигнала"]
                                   ) for index, (sensor_table, sensor_status_table)
@@ -76,3 +77,14 @@ def render_grid(json_code_table, json_grid_table_list, json_grid_status_table_li
             zip_file.writestr(data=sensor, zinfo_or_arcname=f"{index}.html")
 
 
+def render_bounce(json_bounce_table, parameters_of_request):
+    logger.info(f"render_slice(json_bounce_table, parameters_of_request)")
+    # Рендерим header, content, footer
+    with open(constants.JINJA_TEMPLATE_BOUNCE_TABLE, 'r') as bounce_table_template_html:
+        html_template = get_unfilled_html_from_source(bounce_table_template_html.read())
+
+    # Рендерим html
+    string_loader = BaseLoader()
+    env = Environment(loader=string_loader).from_string(html_template)
+    html = env.render(rows=json_bounce_table, parameters=parameters_of_request)
+    pdfkit.from_string(html, constants.WEB_DIR_REPORT_BOUNCE, options=constants.PDF_OPTIONS)

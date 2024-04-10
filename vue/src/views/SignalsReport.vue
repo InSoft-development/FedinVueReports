@@ -1,4 +1,5 @@
 <script>
+import { FilterMatchMode } from 'primevue/api'
 import Multiselect from '@vueform/multiselect'
 import { ref, onMounted, onUnmounted, onBeforeUnmount, computed } from 'vue'
 import { getKKSFilterByMasks, getTypesOfSensors, getSignals, cancelSignals } from '../stores'
@@ -68,6 +69,8 @@ export default {
     const dataTable = ref()
     const dataTableRequested = ref(false)
     const dataTableStartRequested = ref(false)
+
+    const filters = ref(null)
 
     const progressBarSignals = ref('0')
     const progressBarSignalsActive = ref(false)
@@ -211,6 +214,30 @@ export default {
       progressBarSignals.value = '0'
       statusRequestTextArea.value = ''
       statusRequestTextArea.value += 'Начало выполнения запроса...\n'
+
+      filters.value = {
+        'Код сигнала (KKS)': {
+          value: null,
+          matchMode: FilterMatchMode.STARTS_WITH
+        },
+        'Дата и время измерения': {
+          value: null,
+          matchMode: FilterMatchMode.STARTS_WITH
+        },
+        'Значение': {
+          value: null,
+          matchMode: FilterMatchMode.STARTS_WITH
+        },
+        'Качество': {
+          value: null,
+          matchMode: FilterMatchMode.STARTS_WITH
+        },
+        'Код качества': {
+          value: null,
+          matchMode: FilterMatchMode.STARTS_WITH
+        }
+      }
+
       await getSignals(
         chosenTypesOfSensorsData,
         chosenSensorsAndTemplate,
@@ -237,8 +264,8 @@ export default {
     function qualityClass(quality) {
       return [
         {
-          'bg-danger text-white': applicationStore.badCode.includes(quality['Качество']),
-          'bg-warning text-white': quality['Качество'] === ''
+          'text-danger': applicationStore.badCode.includes(quality['Качество']),
+          'text-warning': quality['Качество'] === '' || quality['Качество'] === 'NaN'
         }
       ]
     }
@@ -246,8 +273,8 @@ export default {
     function codeOfQualityClass(code) {
       return [
         {
-          'bg-danger text-white': applicationStore.badNumericCode.includes(code['Код качества']),
-          'bg-warning text-white': code['Код качества'] === ''
+          'text-danger': applicationStore.badNumericCode.includes(code['Код качества']),
+          'text-warning': code['Код качества'] === '' || code['Код качества'] === 'NaN'
         }
       ]
     }
@@ -323,6 +350,7 @@ export default {
       dataTable,
       dataTableRequested,
       dataTableStartRequested,
+      filters,
       qualityClass,
       codeOfQualityClass,
       progressBarSignals,
@@ -505,6 +533,7 @@ export default {
       <div class="row">
         <div class="card" v-if="dataTableRequested">
           <DataTable
+            v-model:filters="filters"
             :value="dataTable"
             paginator
             :rows="10"
@@ -514,21 +543,58 @@ export default {
             columnResizeMode="fit"
             showGridlines="true"
             tableStyle="min-width: 50rem"
+            dataKey="Код сигнала (KKS)"
+            filterDisplay="row"
           >
             <Column
               field="Код сигнала (KKS)"
               header="Код сигнала (KKS)"
               sortable
               style="width: 35%"
-            ></Column>
+            >
+              <template #filter="{ filterModel, filterCallback }">
+                <InputText
+                  v-model="filterModel.value"
+                  type="text"
+                  @input="filterCallback()"
+                  class="p-column-filter"
+                />
+              </template>
+            </Column>
             <Column
               field="Дата и время измерения"
               header="Дата и время измерения"
               sortable
               style="width: 30%"
-            ></Column>
-            <Column field="Значение" header="Значение" sortable style="width: 10%"></Column>
+            >
+             <template #filter="{ filterModel, filterCallback }">
+                <InputText
+                  v-model="filterModel.value"
+                  type="text"
+                  @input="filterCallback()"
+                  class="p-column-filter"
+                />
+              </template>
+            </Column>
+            <Column field="Значение" header="Значение" sortable style="width: 10%">
+              <template #filter="{ filterModel, filterCallback }">
+                <InputText
+                  v-model="filterModel.value"
+                  type="text"
+                  @input="filterCallback()"
+                  class="p-column-filter"
+                />
+              </template>
+            </Column>
             <Column field="Качество" header="Качество" sortable style="width: 20%">
+              <template #filter="{ filterModel, filterCallback }">
+                <InputText
+                  v-model="filterModel.value"
+                  type="text"
+                  @input="filterCallback()"
+                  class="p-column-filter"
+                />
+              </template>
               <template #body="slotProps">
                 <div :class="qualityClass(slotProps.data)">
                   {{ slotProps.data['Качество'] }}
@@ -536,6 +602,14 @@ export default {
               </template>
             </Column>
             <Column field="Код качества" header="Код качества" sortable style="width: 5%">
+              <template #filter="{ filterModel, filterCallback }">
+                <InputText
+                  v-model="filterModel.value"
+                  type="text"
+                  @input="filterCallback()"
+                  class="p-column-filter"
+                />
+              </template>
               <template #body="slotProps">
                 <div :class="codeOfQualityClass(slotProps.data)">
                   {{ slotProps.data['Код качества'] }}

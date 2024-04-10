@@ -18,16 +18,16 @@
         <td><div>{{ item["Дата и время измерения"] }}</div></td>
         <td><div>{{ item["Значение"] }}</div></td>
         {% if item["Качество"] in bad_code %}
-          <td class="bg-danger text-white"><div>{{ item["Качество"] }}</div></td>
-        {% elif item["Качество"] == '' %}
-          <td class="bg-warning text-white"><div>{{ item["Качество"] }}</div></td>
+          <td class="text-danger"><div>{{ item["Качество"] }}</div></td>
+        {% elif item["Качество"] == '' or item["Качество"] == 'NaN' %}
+          <td class="text-warning"><div>{{ item["Качество"] }}</div></td>
         {% else %}
           <td><div>{{ item["Качество"] }}</div></td>
         {% endif %}
         {% if item["Код качества"] in bad_num_code %}
-          <td class="bg-danger text-white"><div>{{ item["Код качества"] }}</div></td>
-        {% elif item["Код качества"] == '' %}
-          <td class="bg-warning text-white"><div>{{ item["Код качества"] }}</div></td>
+          <td class="text-danger"><div>{{ item["Код качества"] }}</div></td>
+        {% elif item["Код качества"] == '' or item["Код качества"] == 'NaN'  %}
+          <td class="text-warning"><div>{{ item["Код качества"] }}</div></td>
         {% else %}
           <td><div>{{ item["Код качества"] }}</div></td>
         {% endif %}

@@ -311,12 +311,13 @@ export default {
     function statusClass(index, field) {
       return [
         {
-          'bg-danger text-white': applicationStore.badCode.includes(
+          'text-danger': applicationStore.badCode.includes(
             dataTableStatus.value[index][String(field)]
           ),
-          'bg-warning text-white':
+          'text-warning':
             dataTableStatus.value[index][String(field)] === 'missed' ||
-            dataTableStatus.value[index][String(field)] === 'NaN'
+            dataTableStatus.value[index][String(field)] === 'NaN' ||
+            dataTable.value[index][String(field)] === 'NaN'
         }
       ]
     }
