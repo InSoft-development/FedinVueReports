@@ -276,8 +276,8 @@ def update_kks_all():
                 logger.info(p_kks_all)
                 # Последний выкаченный тег
                 p_tail = subprocess.Popen(args_tail, stdout=subprocess.PIPE, shell=True)
-                out, err = p_tail.communicate()
-                records = out.decode('utf-8').split('\n')
+                out_tail, err_tail = p_tail.communicate()
+                records = out_tail.decode('utf-8').split('\n')
                 count = records[0].split()[0]
                 record = records[1].split(';')[0]
                 eel.setUpdateStatus(f"{count}. {record} Успех\n", False)
@@ -299,8 +299,8 @@ def update_kks_all():
 
             eel.setUpdateStatus(f"Последняя запись\n", True)
             p_tail = subprocess.Popen(args_tail, stdout=subprocess.PIPE, shell=True)
-            out, err = p_tail.communicate()
-            records = out.decode('utf-8').split('\n')
+            out_tail, err_tail = p_tail.communicate()
+            records = out_tail.decode('utf-8').split('\n')
             count = records[0].split()[0]
             record = records[1].split(';')[0]
             eel.setUpdateStatus(f"{count}. {record} Успех\n", True)

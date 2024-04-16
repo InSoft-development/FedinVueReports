@@ -87,7 +87,7 @@ export default {
       await getTypesOfSensors(typesOfSensorsDataOptions)
 
       window.addEventListener('beforeunload', async (event) => {
-        await context.emit('toggleButtonDialogConfigurator')
+        // await context.emit('toggleButtonDialogConfigurator')
         await cancelGrid()
       })
     })
@@ -100,7 +100,7 @@ export default {
     })
 
     onUnmounted(async () => {
-      if (progressBarGridActive.value) await context.emit('toggleButtonDialogConfigurator')
+      if (progressBarGridActive.value) await context.emit('toggleButtonDialogConfigurator', false)
       await cancelGrid()
       let verticalScroll = document.getElementById('data-table')
       verticalScroll = verticalScroll.querySelector('.p-virtualscroller.p-virtualscroller-inline')
@@ -206,7 +206,7 @@ export default {
         return
       }
       if (progressBarGridActive.value) return
-      await context.emit('toggleButtonDialogConfigurator')
+      await context.emit('toggleButtonDialogConfigurator', true)
 
       dataTableStartRequested.value = true
 
@@ -270,7 +270,7 @@ export default {
       dateTimeEndReport.value = new Date().toLocaleString()
       progressBarGrid.value = '100'
       progressBarGridActive.value = false
-      await context.emit('toggleButtonDialogConfigurator')
+      await context.emit('toggleButtonDialogConfigurator', false)
 
       let verticalScroll = document.getElementById('data-table')
       verticalScroll = verticalScroll.querySelector('.p-virtualscroller.p-virtualscroller-inline')
@@ -278,7 +278,7 @@ export default {
     }
 
     function onInterruptRequestButtonClick() {
-      if (progressBarGridActive.value) context.emit('toggleButtonDialogConfigurator')
+      if (progressBarGridActive.value) context.emit('toggleButtonDialogConfigurator', false)
       cancelGrid()
       dataTableStartRequested.value = false
       progressBarGridActive.value = false
@@ -532,6 +532,7 @@ export default {
             v-model="interval"
             id="intervalGridReport"
             input-id="interval"
+            :useGrouping="false"
             mode="decimal"
             show-buttons
             :min="1"

@@ -82,7 +82,7 @@ export default {
       await getTypesOfSensors(typesOfSensorsDataOptions)
 
       window.addEventListener('beforeunload', async (event) => {
-        await context.emit('toggleButtonDialogConfigurator')
+        // await context.emit('toggleButtonDialogConfigurator')
         await cancelBounce()
       })
     })
@@ -92,7 +92,8 @@ export default {
     })
 
     onUnmounted(async () => {
-      if (progressBarBounceSignalsActive.value) await context.emit('toggleButtonDialogConfigurator')
+      if (progressBarBounceSignalsActive.value)
+        await context.emit('toggleButtonDialogConfigurator', false)
       await cancelBounce()
     })
 
@@ -172,7 +173,7 @@ export default {
       }
 
       if (progressBarBounceSignalsActive.value) return
-      await context.emit('toggleButtonDialogConfigurator')
+      await context.emit('toggleButtonDialogConfigurator', true)
 
       dataTableStartRequested.value = true
 
@@ -210,11 +211,12 @@ export default {
       dateTimeEndReport.value = new Date().toLocaleString()
       progressBarBounceSignals.value = '100'
       progressBarBounceSignalsActive.value = false
-      await context.emit('toggleButtonDialogConfigurator')
+      await context.emit('toggleButtonDialogConfigurator', false)
     }
 
     function onInterruptRequestButtonClick() {
-      if (progressBarBounceSignalsActive.value) context.emit('toggleButtonDialogConfigurator')
+      if (progressBarBounceSignalsActive.value)
+        context.emit('toggleButtonDialogConfigurator', false)
       cancelBounce()
       dataTableStartRequested.value = false
       progressBarBounceSignalsActive.value = false
@@ -436,6 +438,7 @@ export default {
             v-model="interval"
             id="interval"
             input-id="interval"
+            :useGrouping="false"
             mode="decimal"
             show-buttons
             :min="1"
@@ -450,6 +453,7 @@ export default {
             v-model="countShowSensors"
             id="show-sensors"
             input-id="countShowSensors"
+            :useGrouping="false"
             mode="decimal"
             show-buttons
             :min="1"

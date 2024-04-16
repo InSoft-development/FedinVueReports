@@ -249,6 +249,7 @@ export default {
                   v-model="portOPC"
                   id="port-opc-server-address"
                   input-id="port"
+                  :useGrouping="false"
                   mode="decimal"
                   show-buttons
                   :min="0"
