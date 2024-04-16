@@ -94,11 +94,17 @@ export default {
 
     onBeforeUnmount(async () => {
       window.removeEventListener('beforeunload', async (event) => {})
+      let verticalScroll = document.getElementById('data-table')
+      verticalScroll = verticalScroll.querySelector('.p-virtualscroller.p-virtualscroller-inline')
+      verticalScroll.removeEventListener('scroll', synchroScroll)
     })
 
     onUnmounted(async () => {
       if (progressBarGridActive.value) await context.emit('toggleButtonDialogConfigurator')
       await cancelGrid()
+      let verticalScroll = document.getElementById('data-table')
+      verticalScroll = verticalScroll.querySelector('.p-virtualscroller.p-virtualscroller-inline')
+      verticalScroll.removeEventListener('scroll', synchroScroll)
     })
 
     async function onTypesOfSensorsDataChange(val) {
@@ -265,6 +271,10 @@ export default {
       progressBarGrid.value = '100'
       progressBarGridActive.value = false
       await context.emit('toggleButtonDialogConfigurator')
+
+      let verticalScroll = document.getElementById('data-table')
+      verticalScroll = verticalScroll.querySelector('.p-virtualscroller.p-virtualscroller-inline')
+      verticalScroll.addEventListener('scroll', synchroScroll, false)
     }
 
     function onInterruptRequestButtonClick() {
@@ -288,6 +298,14 @@ export default {
 
     function onButtonDownloadCsvClick() {
       const link = document.createElement('a')
+      const pathCodeCsv = 'code.csv'
+      link.setAttribute('download', pathCodeCsv)
+      link.setAttribute('type', 'application/octet-stream')
+      link.setAttribute('href', 'code.csv')
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+
       const pathGridCsv = 'grid.csv'
       link.setAttribute('download', pathGridCsv)
       link.setAttribute('type', 'application/octet-stream')
@@ -327,7 +345,22 @@ export default {
       if (index >= 0) {
         sensorsAndTemplateOptions.value[0].options.splice(index, 1)
       }
-      console.log(sensorsAndTemplateOptions.value[0].options)
+    }
+
+    const synchroScroll = (event) => {
+      let codeScroll = document.getElementById('code-table')
+      codeScroll = codeScroll.querySelector('.p-virtualscroller.p-virtualscroller-inline')
+      let dataScroll = document.getElementById('data-table')
+      dataScroll = dataScroll.querySelector('.p-virtualscroller.p-virtualscroller-inline')
+      codeScroll.scrollTop = dataScroll.scrollLeft * 0.25
+    }
+
+    const synchroScrollByHref = (event) => {
+      let codeScroll = document.getElementById('code-table')
+      codeScroll = codeScroll.querySelector('.p-virtualscroller.p-virtualscroller-inline')
+      let dataScroll = document.getElementById('data-table')
+      dataScroll = dataScroll.querySelector('.p-virtualscroller.p-virtualscroller-inline')
+      dataScroll.scrollLeft = codeScroll.scrollTop / 0.25
     }
 
     return {
@@ -371,7 +404,9 @@ export default {
       onButtonDownloadCsvClick,
       onButtonDownloadPdfClick,
       statusClass,
-      onButtonRemoveOptionClick
+      onButtonRemoveOptionClick,
+      synchroScroll,
+      synchroScrollByHref
     }
   }
 }
@@ -559,69 +594,78 @@ export default {
         </div>
       </div>
       <div class="row" style="padding-bottom: 20px">
-        <div class="card" v-if="dataTableRequested">
-          <DataTable
-            :value="dataCodeTable"
-            scrollable="true"
-            scrollHeight="1000px"
-            columnResizeMode="fit"
-            showGridlines="true"
-            :virtualScrollerOptions="{ itemSize: 50 }"
-            tableStyle="min-width: 50rem"
-          >
-            <Column field="№" header="№" sortable style="width: 35%"> </Column>
-            <Column
-              field="Обозначение сигнала"
-              header="Обозначение сигнала"
-              sortable
-              style="width: 30%"
+        <div style="padding-bottom: 20px">
+          <div class="card" v-if="dataTableRequested" id="code-table">
+            <DataTable
+              :value="dataCodeTable"
+              scrollable="true"
+              scrollHeight="400px"
+              columnResizeMode="fit"
+              showGridlines="true"
+              :virtualScrollerOptions="{ itemSize: 50 }"
+              tableStyle="min-width: 50rem"
             >
-            </Column>
-          </DataTable>
-        </div>
-      </div>
-      <div class="row" style="padding-bottom: 20px">
-        <template v-for="i in countOfDataTable">
-          <div style="padding-bottom: 20px">
-            <div class="card" v-if="dataTableRequested">
-              <DataTable
-                v-model:filters="filters"
-                :value="dataTable"
-                scrollable="true"
-                scrollHeight="1000px"
-                columnResizeMode="fit"
-                showGridlines="true"
-                :virtualScrollerOptions="{ itemSize: 50 }"
-                tableStyle="min-width: 50rem"
-                dataKey="Метка времени"
-                filterDisplay="row"
+              <Column field="№" header="№" sortable style="width: 50%"> </Column>
+              <Column
+                field="Обозначение сигнала"
+                header="Обозначение сигнала"
+                sortable
+                style="width: 50%"
               >
-                <Column
-                  v-for="col of columnsTableArrayOfArray[i - 1]"
-                  :key="col.field"
-                  :field="col.field"
-                  :header="col.header"
-                  sortable
-                  v-bind:style="[col.field === 'Метка времени' ? { width: '20%' } : null]"
-                >
-                  <template #body="slotProps">
-                    <div :class="statusClass(slotProps.index, slotProps.field)">
+                <template #body="slotProps">
+                  <a :href="'#' + slotProps.data['№']" @click="synchroScrollByHref">
+                    <div>
                       {{ slotProps.data[slotProps.field] }}
                     </div>
-                  </template>
-                  <template #filter="{ filterModel, filterCallback }">
-                    <InputText
-                      v-model="filterModel.value"
-                      type="text"
-                      @input="filterCallback()"
-                      class="p-column-filter"
-                    />
-                  </template>
-                </Column>
-              </DataTable>
-            </div>
+                  </a>
+                </template>
+              </Column>
+            </DataTable>
           </div>
-        </template>
+          <div class="card" v-if="dataTableRequested" id="data-table">
+            <DataTable
+              v-model:filters="filters"
+              :value="dataTable"
+              scrollable="true"
+              scrollHeight="1000px"
+              columnResizeMode="fit"
+              showGridlines="true"
+              :virtualScrollerOptions="{ itemSize: 50 }"
+              tableStyle="min-width: 50rem"
+              dataKey="Метка времени"
+              filterDisplay="row"
+            >
+              <Column
+                v-for="col of columnsTable"
+                :key="col.field"
+                :field="col.field"
+                :header="col.header"
+                sortable
+                v-bind:frozen="[col.field === 'Метка времени']"
+                v-bind:style="[
+                  col.field === 'Метка времени'
+                    ? { 'min-width': '300px' }
+                    : { 'min-width': '200px' }
+                ]"
+              >
+                <template #body="slotProps">
+                  <div :class="statusClass(slotProps.index, slotProps.field)">
+                    {{ slotProps.data[slotProps.field] }}
+                  </div>
+                </template>
+                <template #filter="{ filterModel, filterCallback }">
+                  <InputText
+                    :id="col.header"
+                    v-model="filterModel.value"
+                    type="text"
+                    @input="filterCallback()"
+                    class="p-column-filter"
+                  />
+                </template>
+              </Column>
+            </DataTable>
+          </div>
+        </div>
       </div>
       <div class="row" v-if="dataTableRequested">Отчет: {{ dateTimeEndReport }}</div>
     </div>

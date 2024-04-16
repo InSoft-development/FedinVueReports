@@ -68,6 +68,7 @@ def render_grid(json_code_table, json_grid_table_list, json_grid_status_table_li
 
     # Рендерим общий html
     pdfkit.from_string(html, constants.WEB_DIR_REPORT_GRID, options=constants.PDF_OPTIONS)
+    logger.info(f"Общий html срендерен")
 
     # Сохраняем архив
     with ZipFile(constants.WEB_DIR_REPORT_GRID_ZIP, 'w', compression=ZIP_DEFLATED) as zip_file:
@@ -75,6 +76,7 @@ def render_grid(json_code_table, json_grid_table_list, json_grid_status_table_li
         # Добавляем в архив отчет по каждому датчику
         for index, sensor in enumerate(sensor_html_list):
             zip_file.writestr(data=sensor, zinfo_or_arcname=f"{index}.html")
+            logger.info(f"{index}.html добавлен в архив")
 
 
 def render_bounce(json_bounce_table, parameters_of_request):

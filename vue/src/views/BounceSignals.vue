@@ -166,11 +166,7 @@ export default {
       dataTableRequested.value = false
       dateTimeBeginReport.value = new Date().toLocaleString()
 
-      if (
-        !chosenTypesOfSensorsData.length ||
-        !chosenSensorsAndTemplate.length ||
-        !dateTime.value
-      ) {
+      if (!chosenTypesOfSensorsData.length || !chosenSensorsAndTemplate.length || !dateTime.value) {
         alert('Не заполнены параметры запроса!')
         return
       }
@@ -191,7 +187,7 @@ export default {
           value: null,
           matchMode: FilterMatchMode.STARTS_WITH
         },
-        'Частота':{
+        Частота: {
           value: null,
           matchMode: FilterMatchMode.STARTS_WITH
         }

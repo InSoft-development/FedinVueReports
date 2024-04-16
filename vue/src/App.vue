@@ -127,7 +127,6 @@ export default {
         alert('Файл тегов не найден')
         return
       }
-      alert('Обновление тегов закончено')
       statusUpdateButtonActive.value = false
       checkFileActive.value = true
       await getLastUpdateFileKKS(lastUpdateFileKKS)

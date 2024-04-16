@@ -252,8 +252,8 @@ def update_kks_all():
 
         try:
             global p_kks_all
-            out = open('out.log', 'w')
-            err = open('err.log', 'w')
+            out = open(f'client{os.sep}out.log', 'w')
+            err = open(f'client{os.sep}err.log', 'w')
             p_kks_all = subprocess.Popen(args, stdout=out, preexec_fn=os.setsid,
                                          stderr=err, cwd=f"{os.getcwd()}{os.sep}client{os.sep}")
             eel.sleep(1)  # даем небольшое время на наполнение временного файла тегов kks.csv
@@ -721,19 +721,20 @@ def get_grid_data(kks, date_begin, date_end, interval, dimension):
         logger.info(df_report_slice)
 
         eel.setUpdateGridRequestStatus(f"Сохранение таблиц отчета\n")
-
+        code = pd.DataFrame(data={
+            '№': [i for i in range(len(df_slice_csv.columns.tolist()[1:]))],
+            'Обозначение сигнала': [kks for kks in df_slice_csv.columns.tolist()[1:]]})
+        code.to_csv(constants.CSV_CODE, index=False, encoding='utf-8')
         df_report.to_csv(constants.CSV_GRID, index=False, encoding='utf-8')
-        logger.info("Датафрейм сформирован")
+        logger.info("Датафреймы сформированы")
 
         shutil.copy(constants.CSV_GRID, f'{constants.WEB_DIR}grid.csv')
-        logger.info("Датафрейм доступен для выкачки")
+        shutil.copy(constants.CSV_CODE, f'{constants.WEB_DIR}code.csv')
+        logger.info("Датафреймы доступны для выкачки")
 
         eel.setProgressBarGrid(90)
         eel.setUpdateGridRequestStatus(f"Формирование отчета\n")
-        code = json.loads(pd.DataFrame(data={
-            '№': [i for i in range(len(df_slice_csv.columns.tolist()[1:]))],
-            'Обозначение сигнала': [kks for kks in df_slice_csv.columns.tolist()[1:]]})
-                          .to_json(orient='records'))
+        code = json.loads(code.to_json(orient='records'))
 
         # Разделение таблиц по группам по 5 датчикам
         separate_count = 1

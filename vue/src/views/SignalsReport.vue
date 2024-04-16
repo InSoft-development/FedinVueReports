@@ -224,11 +224,11 @@ export default {
           value: null,
           matchMode: FilterMatchMode.STARTS_WITH
         },
-        'Значение': {
+        Значение: {
           value: null,
           matchMode: FilterMatchMode.STARTS_WITH
         },
-        'Качество': {
+        Качество: {
           value: null,
           matchMode: FilterMatchMode.STARTS_WITH
         },
@@ -567,7 +567,7 @@ export default {
               sortable
               style="width: 30%"
             >
-             <template #filter="{ filterModel, filterCallback }">
+              <template #filter="{ filterModel, filterCallback }">
                 <InputText
                   v-model="filterModel.value"
                   type="text"

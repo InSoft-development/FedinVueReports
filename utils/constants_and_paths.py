@@ -18,12 +18,6 @@ REPORTS_ANALOG_GRID = f'{REPORTS_DIRECTORY}analog_grid.pdf'
 REPORTS_DISCRETE_GRID = f'{REPORTS_DIRECTORY}discrete_grid.pdf'
 REPORTS_BOUNCE = f'{REPORTS_DIRECTORY}bounce.pdf'
 
-# REPORT_SLICE_HTML = f'{REPORTS_DIRECTORY}signals_slice.html'
-# REPORT_SLICE_PDF = f'{REPORTS_DIRECTORY}signals_slice.pdf'
-
-# REPORT_GRID_HTML = f'{REPORTS_DIRECTORY}grid.html'
-# REPORT_GRID_PDF = f'{REPORTS_DIRECTORY}grid.pdf'
-
 CSV_ANALOG_SLICES = f'{REPORTS_DIRECTORY}analog_slice.csv'
 CSV_DISCRETE_SLICES = f'{REPORTS_DIRECTORY}discrete_slice.csv'
 CSV_ANALOG_GRID = f'{REPORTS_DIRECTORY}analog_grid.csv'
@@ -31,6 +25,7 @@ CSV_DISCRETE_GRID = f'{REPORTS_DIRECTORY}discrete_grid.csv'
 CSV_BOUNCE = f'{REPORTS_DIRECTORY}bounce.csv'
 CSV_SIGNALS = f'{REPORTS_DIRECTORY}signals_slice.csv'
 CSV_GRID = f'{REPORTS_DIRECTORY}grid.csv'
+CSV_CODE = f'{REPORTS_DIRECTORY}code.csv'
 
 WEB_DIR = f'web{os.sep}'
 WEB_DIR_REPORT = f'{WEB_DIR}report{os.sep}'
