@@ -15,6 +15,7 @@ import shutil
 
 import sqlite3
 from gevent import subprocess
+from gevent.subprocess import check_output
 import shlex
 import itertools
 
@@ -97,6 +98,7 @@ def get_kks_by_masks(types_list, mask_list):
     for mask in mask_list:
         kks = kks[kks[0].str.contains(mask, regex=True)]
 
+    logger.info(len(kks[0].tolist()))
     return kks[0].tolist()[:constants.COUNT_OF_RETURNED_KKS]
 
 
@@ -140,6 +142,7 @@ def get_kks(types_list, mask_list, kks_list):
 
     kks_requested_list += kks_mask_list
     logger.info(kks_requested_list)
+    logger.info(len(kks_requested_list))
     return kks_requested_list
 
 
@@ -603,6 +606,14 @@ def signals_data_cancel():
         eel.gvt.killall([signals_greenlet])
         signals_greenlet = None
 
+        try:
+            wkhtmltopdf_pid = check_output(["pidof", "-s", "wkhtmltopdf"])
+            logger.warning(f"wkhtmltopdf pid = {wkhtmltopdf_pid}")
+            if wkhtmltopdf_pid:
+                os.kill(int(wkhtmltopdf_pid), signal.SIGTERM)
+        except subprocess.CalledProcessError as subprocess_exception:
+            logger.error(subprocess_exception)
+
 
 # Переменная под объект гринлета выполнения запроса сетки
 grid_greenlet = None
@@ -819,6 +830,14 @@ def grid_data_cancel():
     if grid_greenlet:
         eel.gvt.killall([grid_greenlet])
         grid_greenlet = None
+
+        try:
+            wkhtmltopdf_pid = check_output(["pidof", "-s", "wkhtmltopdf"])
+            logger.warning(f"wkhtmltopdf pid = {wkhtmltopdf_pid}")
+            if wkhtmltopdf_pid:
+                os.kill(int(wkhtmltopdf_pid), signal.SIGTERM)
+        except subprocess.CalledProcessError as subprocess_exception:
+            logger.error(subprocess_exception)
 
 
 analog_signals_greenlet = None
@@ -1590,6 +1609,14 @@ def bounce_data_cancel():
     if bounce_greenlet:
         eel.gvt.killall([bounce_greenlet])
         bounce_greenlet = None
+
+        try:
+            wkhtmltopdf_pid = check_output(["pidof", "-s", "wkhtmltopdf"])
+            logger.warning(f"wkhtmltopdf pid = {wkhtmltopdf_pid}")
+            if wkhtmltopdf_pid:
+                os.kill(int(wkhtmltopdf_pid), signal.SIGTERM)
+        except subprocess.CalledProcessError as subprocess_exception:
+            logger.error(subprocess_exception)
 
 
 def server_run_thread():

@@ -33,6 +33,7 @@ export default {
       {
         label: 'Шаблоны',
         options: [
+          'Sochi2\\.GT\\.AM\\.\\S*-AM\\.Q?$',
           '.*\\.state\\..*',
           '.*-icCV_.*\\.state\\..*',
           'Sochi2\\.GT\\.AM\\..*',
