@@ -160,7 +160,6 @@ export async function getSignals(
     if (Array.isArray(result)) {
       dataTable.value = result
       dataTableRequested.value = true
-      console.log(result)
     }
   })
 }
@@ -389,6 +388,5 @@ export async function getBounceSignals(
   if (Array.isArray(result)) {
     dataTable.value = result
     dataTableRequested.value = true
-    console.log(dataTable.value)
   }
 }

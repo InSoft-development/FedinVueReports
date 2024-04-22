@@ -84,6 +84,14 @@ export default {
 
     let delayTimer = null
 
+    const estimatedTime = ref(0.0)
+    const chosenSensors = ref([])
+
+    const dialogBigRequestActive = ref(false)
+    const scrolledTagBigRequestTextArea = ref('')
+
+    const interruptDisabledFlag = ref(false)
+
     onMounted(async () => {
       await getTypesOfSensors(typesOfSensorsDataOptions)
 
@@ -126,8 +134,6 @@ export default {
     }
 
     async function onMultiselectSensorsAndTemplateChange(val) {
-      console.log('onMultiselectSensorsAndTemplateChange')
-
       if (
         window.event.target.id.includes('divRemoveButton') ||
         window.event.target.id.includes('removeButton') ||
@@ -175,18 +181,15 @@ export default {
     }
 
     async function onMultiselectSensorsAndTemplateSelect(val, option) {
-      console.log('onMultiselectSensorsAndTemplateSelect')
       return
     }
 
     async function onMultiselectSensorsAndTemplateDeselect(val, option) {
-      console.log('onMultiselectSensorsAndTemplateDeselect')
       return
     }
 
     async function onRequestButtonClick() {
       dataTableRequested.value = false
-      dateTimeBeginReport.value = new Date().toLocaleString()
       if (
         !chosenTypesOfSensorsData.length ||
         !chosenSensorsAndTemplate.length ||
@@ -207,6 +210,7 @@ export default {
         return
       }
       if (progressBarGridActive.value) return
+      dateTimeBeginReport.value = new Date().toLocaleString()
       await context.emit('toggleButtonDialogConfigurator', true)
 
       dataTableStartRequested.value = true
@@ -215,7 +219,30 @@ export default {
       progressBarGrid.value = '0'
 
       statusRequestTextArea.value = ''
-      statusRequestTextArea.value += 'Начало выполнения запроса...\n'
+      statusRequestTextArea.value +=
+        'Начало выполнения запроса...\nОценка времени выполнения запроса...\n'
+
+      interruptDisabledFlag.value = true
+
+      chosenSensors.value = []
+      let differenceInTime = dateTimeEnd.value.getTime() - dateTimeBegin.value.getTime()
+      let differenceInDimension = Math.round(
+        differenceInTime / (1000 * applicationStore.deltaTimeInSeconds[intervalRadio.value])
+      )
+
+      await getKKSByMasksForTable(chosenSensors, chosenTypesOfSensorsData, chosenSensorsAndTemplate)
+
+      estimatedTime.value =
+        (chosenSensors.value.length * differenceInDimension) /
+        (applicationStore.estimatedGridRateInHours * interval.value)
+
+      // Если расчетное время больше предельного, то выдаем пользователю диалоговое окно с подтверждением запроса
+      if (estimatedTime.value >= applicationStore.gridTimeLimitInHours) {
+        scrolledTagBigRequestTextArea.value = ''
+        scrolledTagBigRequestTextArea.value = sensorsAndTemplateOptions.value[1].options.join('\n')
+        dialogBigRequestActive.value = true
+        return
+      }
 
       columnsTable.value = []
       columnsTableArrayOfArray.value = []
@@ -229,9 +256,6 @@ export default {
       let codeTableArray = Array()
       let columnsTableArray = [{ field: 'Метка времени', header: 'Метка времени' }]
 
-      let chosenSensors = ref([])
-      await getKKSByMasksForTable(chosenSensors, chosenTypesOfSensorsData, chosenSensorsAndTemplate)
-      console.log(chosenSensors.value)
       for (const [index, element] of chosenSensors.value.entries()) {
         codeTableArray.push({ '№': index, 'Обозначение сигнала': element })
         columnsTableArray.push({ field: String(index), header: String(index) })
@@ -240,6 +264,8 @@ export default {
 
       dataCodeTable.value = codeTableArray
       columnsTable.value = columnsTableArray
+
+      interruptDisabledFlag.value = false
 
       await getGrid(
         chosenSensors.value,
@@ -252,21 +278,21 @@ export default {
         dataTableStatus
       )
 
-      countOfDataTable.value = Math.ceil(chosenSensors.value.length / 5)
+      // countOfDataTable.value = Math.ceil(chosenSensors.value.length / 5)
 
-      if (countOfDataTable.value === 1) columnsTableArrayOfArray.value.push(columnsTableArray)
-      else {
-        for (let i = 0; i < countOfDataTable.value; i++) {
-          if (i === 0) columnsTableArrayOfArray.value.push(columnsTable.value.slice(0, 6))
-          else {
-            columnsTableArrayOfArray.value.push(columnsTable.value.slice(i * 5 + 1, i * 5 + 6))
-            columnsTableArrayOfArray.value[i].unshift({
-              field: 'Метка времени',
-              header: 'Метка времени'
-            })
-          }
-        }
-      }
+      // if (countOfDataTable.value === 1) columnsTableArrayOfArray.value.push(columnsTableArray)
+      // else {
+      //   for (let i = 0; i < countOfDataTable.value; i++) {
+      //     if (i === 0) columnsTableArrayOfArray.value.push(columnsTable.value.slice(0, 6))
+      //     else {
+      //       columnsTableArrayOfArray.value.push(columnsTable.value.slice(i * 5 + 1, i * 5 + 6))
+      //       columnsTableArrayOfArray.value[i].unshift({
+      //         field: 'Метка времени',
+      //         header: 'Метка времени'
+      //       })
+      //     }
+      //   }
+      // }
 
       dateTimeEndReport.value = new Date().toLocaleString()
       progressBarGrid.value = '100'
@@ -364,6 +390,79 @@ export default {
       dataScroll.scrollLeft = codeScroll.scrollTop / 0.25
     }
 
+    async function onButtonCancelBigRequestClick() {
+      dialogBigRequestActive.value = false
+      progressBarGrid.value = '100'
+      progressBarGridActive.value = false
+      await context.emit('toggleButtonDialogConfigurator', false)
+    }
+
+    async function onBigRequestButtonClick() {
+      dialogBigRequestActive.value = false
+
+      statusRequestTextArea.value +=
+        'Подготовка к выполнению долгого запроса\n'
+
+      columnsTable.value = []
+      columnsTableArrayOfArray.value = []
+
+      filters.value = {
+        'Метка времени': {
+          value: null,
+          matchMode: FilterMatchMode.STARTS_WITH
+        }
+      }
+      let codeTableArray = Array()
+      let columnsTableArray = [{ field: 'Метка времени', header: 'Метка времени' }]
+
+      for (const [index, element] of chosenSensors.value.entries()) {
+        codeTableArray.push({ '№': index, 'Обозначение сигнала': element })
+        columnsTableArray.push({ field: String(index), header: String(index) })
+        filters.value[index] = { value: null, matchMode: FilterMatchMode.STARTS_WITH }
+      }
+
+      dataCodeTable.value = codeTableArray
+      columnsTable.value = columnsTableArray
+
+      interruptDisabledFlag.value = false
+
+      await getGrid(
+        chosenSensors.value,
+        dateTimeBegin.value,
+        dateTimeEnd.value,
+        interval.value,
+        intervalRadio.value,
+        dataTable,
+        dataTableRequested,
+        dataTableStatus
+      )
+
+      // countOfDataTable.value = Math.ceil(chosenSensors.value.length / 5)
+      //
+      // if (countOfDataTable.value === 1) columnsTableArrayOfArray.value.push(columnsTableArray)
+      // else {
+      //   for (let i = 0; i < countOfDataTable.value; i++) {
+      //     if (i === 0) columnsTableArrayOfArray.value.push(columnsTable.value.slice(0, 6))
+      //     else {
+      //       columnsTableArrayOfArray.value.push(columnsTable.value.slice(i * 5 + 1, i * 5 + 6))
+      //       columnsTableArrayOfArray.value[i].unshift({
+      //         field: 'Метка времени',
+      //         header: 'Метка времени'
+      //       })
+      //     }
+      //   }
+      // }
+
+      dateTimeEndReport.value = new Date().toLocaleString()
+      progressBarGrid.value = '100'
+      progressBarGridActive.value = false
+      await context.emit('toggleButtonDialogConfigurator', false)
+
+      let verticalScroll = document.getElementById('data-table')
+      verticalScroll = verticalScroll.querySelector('.p-virtualscroller.p-virtualscroller-inline')
+      verticalScroll.addEventListener('scroll', synchroScroll, false)
+    }
+
     return {
       typesOfSensorsDataValue,
       typesOfSensorsDataOptions,
@@ -401,13 +500,20 @@ export default {
       filters,
       onRequestButtonClick,
       onInterruptRequestButtonClick,
+      interruptDisabledFlag,
       setProgressBarGrid,
       onButtonDownloadCsvClick,
       onButtonDownloadPdfClick,
       statusClass,
       onButtonRemoveOptionClick,
       synchroScroll,
-      synchroScrollByHref
+      synchroScrollByHref,
+      estimatedTime,
+      chosenSensors,
+      dialogBigRequestActive,
+      scrolledTagBigRequestTextArea,
+      onButtonCancelBigRequestClick,
+      onBigRequestButtonClick
     }
   }
 }
@@ -562,7 +668,58 @@ export default {
       </div>
       <div class="row">
         <div class="col" style="padding-bottom: 20px">
-          <Button @click="onRequestButtonClick">Запрос</Button>
+          <Button @click="onRequestButtonClick" :disabled="isLoadingSensorsAndTemplate"
+            >Запрос</Button
+          >
+          <Dialog
+            v-model="dialogBigRequestActive"
+            :visible="dialogBigRequestActive"
+            :closable="false"
+            header="Подтверждение запуска длительного по времени запроса"
+            position="center"
+            :modal="true"
+            :draggable="false"
+            :style="{ width: '50rem' }"
+          >
+            <div class="container">
+              <div class="row">
+                <div class="col">
+                  <b>Запрошенные теги</b>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col">
+                  <TextArea
+                    id="big-request-text-area"
+                    v-model="scrolledTagBigRequestTextArea"
+                    rows="10"
+                    cols="80"
+                    readonly
+                    :style="{ resize: 'none', 'overflow-y': scroll }"
+                    >{{ scrolledTagBigRequestTextArea }}</TextArea
+                  >
+                </div>
+              </div>
+              <div class="row">
+                <div class="col">
+                  Примерная оценка времени выполнения запроса: <b>{{ estimatedTime }} чаc.</b>
+                </div>
+              </div>
+            </div>
+            <template #footer>
+              <Button
+                label="Отмена"
+                icon="pi pi-times"
+                @click="onButtonCancelBigRequestClick"
+                text
+              />
+              <Button
+                label="Запустить запрос"
+                icon="pi pi-check"
+                @click="onBigRequestButtonClick"
+              />
+            </template>
+          </Dialog>
         </div>
         <div class="col" v-if="dataTableRequested">
           <Button @click="onButtonDownloadPdfClick">Загрузить отчет</Button>
@@ -579,7 +736,7 @@ export default {
           <ProgressBar :value="progressBarGrid"></ProgressBar>
         </div>
         <div class="col-2">
-          <Button @click="onInterruptRequestButtonClick">Прервать запрос</Button>
+          <Button @click="onInterruptRequestButtonClick" :disabled="interruptDisabledFlag">Прервать запрос</Button>
         </div>
       </div>
       <div class="row" v-if="progressBarGridActive">

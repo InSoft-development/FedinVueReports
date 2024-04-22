@@ -484,9 +484,9 @@ def get_signals_data(types_list, mask_list, kks_list, quality, date, date_deep_s
                         logger.info(f'Получение по OPC UA: {element[0]}->{element[1]}')
                         logger.info(command_string)
 
-                        eel.setUpdateSignalsRequestStatus(f"Получение по OPC UA: {element[0]}->{element[1]}\n"
-                                                          f"за период с {command_datetime_begin_time} по "
-                                                          f"{command_datetime_end_time}\n")
+                        # eel.setUpdateSignalsRequestStatus(f"Получение по OPC UA: {element[0]}->{element[1]}\n"
+                        #                                   f"за период с {command_datetime_begin_time} по "
+                        #                                   f"{command_datetime_end_time}\n")
 
                         args = ["./client", "-b", f"{command_datetime_begin_time}", "-e",
                                 f"{command_datetime_end_time}",
@@ -591,7 +591,6 @@ def get_signals_data(types_list, mask_list, kks_list, quality, date, date_deep_s
     signals_greenlet = eel.spawn(get_signals_data_spawn, types_list, mask_list, kks_list, quality, date, date_deep_search)
     eel.gvt.joinall([signals_greenlet])
 
-    logger.info("Формирование отчета")
     return signals_greenlet.value
 
 

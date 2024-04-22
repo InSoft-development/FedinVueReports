@@ -40,9 +40,9 @@
             <td><div>{{ outer_loop.index0 }}</div></td>
             {% for key, value in item.items() %}
                 {% if status[outer_loop.index0][key] in bad_code %}
-                    <td class="bg-danger text-white"><div>{{ value }}</div></td>
+                    <td class="text-danger"><div>{{ value }}</div></td>
                 {% elif status[outer_loop.index0][key] == "missed" or status[outer_loop.index0][key] == "NaN" %}
-                    <td class="bg-warning text-white"><div>{{ value }}</div></td>
+                    <td class="text-warning"><div>{{ value }}</div></td>
                 {% else %}
                     <td><div>{{ value }}</div></td>
                 {% endif %}
