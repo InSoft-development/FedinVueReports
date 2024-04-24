@@ -1,6 +1,5 @@
 <script>
-import { RouterLink, RouterView } from 'vue-router'
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useConfirm } from 'primevue/useconfirm'
 
 import {
@@ -14,41 +13,6 @@ import {
 
 export default {
   setup() {
-    // const sidebarMenu = [
-    //   {
-    //     header: 'Меню отчетов',
-    //     hiddenOnCollapse: true
-    //   },
-    //   {
-    //     href: '/',
-    //     title: 'Срез аналоговых сигналов'
-    //   },
-    //   {
-    //     href: '/discrete_signals',
-    //     title: 'Срез дискретных сигналов'
-    //   },
-    //   {
-    //     href: '/analog_grid',
-    //     title: 'Сетка аналоговых сигналов'
-    //   },
-    //   {
-    //     href: '/discrete_grid',
-    //     title: 'Сетка дискретных сигналов'
-    //   },
-    //   {
-    //     href: '/bounce_signals',
-    //     title: 'Дребезг сигналов'
-    //   },
-    //   {
-    //     href: '/signals_report',
-    //     title: 'Срезы сигналов'
-    //   },
-    //   {
-    //     href: '/grid_report',
-    //     title: 'Сетка сигналов'
-    //   }
-    // ]
-
     const sidebarMenu = [
       {
         header: 'Меню отчетов',

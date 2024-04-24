@@ -141,8 +141,13 @@ def get_kks(types_list, mask_list, kks_list):
         kks_requested_list = [kks for kks in kks_list if kks not in kks_mask_list]
 
     kks_requested_list += kks_mask_list
-    logger.info(kks_requested_list)
     logger.info(len(kks_requested_list))
+    
+    tags_df = pd.DataFrame(columns=['Наименование тега'], data={'Наименование тега': kks_requested_list})
+    tags_df.to_csv(constants.CSV_TAGS)
+    shutil.copy(constants.CSV_TAGS, f'{constants.WEB_DIR}tags.csv')
+    logger.info(f'Датафрейм {constants.WEB_DIR}tags.csv доступен для выкачки')
+
     return kks_requested_list
 
 

@@ -87,7 +87,6 @@ export default {
     const chosenSensors = ref([])
 
     const dialogBigRequestActive = ref(false)
-    const scrolledTagBigRequestTextArea = ref('')
 
     const interruptDisabledFlag = ref(false)
 
@@ -95,7 +94,6 @@ export default {
       await getTypesOfSensors(typesOfSensorsDataOptions)
 
       window.addEventListener('beforeunload', async (event) => {
-        // await context.emit('toggleButtonDialogConfigurator')
         await cancelBounce()
       })
     })
@@ -192,7 +190,8 @@ export default {
       progressBarBounceSignals.value = '0'
 
       statusRequestTextArea.value = ''
-      statusRequestTextArea.value += 'Начало выполнения запроса...\nОценка времени выполнения запроса...\n'
+      statusRequestTextArea.value +=
+        'Начало выполнения запроса...\nОценка времени выполнения запроса...\n'
 
       interruptDisabledFlag.value = true
 
@@ -200,44 +199,12 @@ export default {
       await getKKSByMasksForTable(chosenSensors, chosenTypesOfSensorsData, chosenSensorsAndTemplate)
 
       estimatedTime.value =
-        (chosenSensors.value.length * interval.value * applicationStore.deltaTimeInSeconds[intervalRadio.value]) /
+        (chosenSensors.value.length *
+          interval.value *
+          applicationStore.deltaTimeInSeconds[intervalRadio.value]) /
         applicationStore.estimatedBounceRateInHours
 
-      // Если расчетное время больше предельного, то выдаем пользователю диалоговое окно с подтверждением запроса
-      if (estimatedTime.value >= applicationStore.bounceTimeLimitInHours) {
-        scrolledTagBigRequestTextArea.value = ''
-        scrolledTagBigRequestTextArea.value = sensorsAndTemplateOptions.value[1].options.join('\n')
-        dialogBigRequestActive.value = true
-        return
-      }
-
-      filters.value = {
-        'Наименование датчика': {
-          value: null,
-          matchMode: FilterMatchMode.STARTS_WITH
-        },
-        Частота: {
-          value: null,
-          matchMode: FilterMatchMode.STARTS_WITH
-        }
-      }
-
-      interruptDisabledFlag.value = false
-
-      await getBounceSignals(
-        chosenSensors.value,
-        dateTime.value,
-        interval.value,
-        intervalRadio.value,
-        countShowSensors.value,
-        dataTable,
-        dataTableRequested
-      )
-
-      dateTimeEndReport.value = new Date().toLocaleString()
-      progressBarBounceSignals.value = '100'
-      progressBarBounceSignalsActive.value = false
-      await context.emit('toggleButtonDialogConfigurator', false)
+      dialogBigRequestActive.value = true
     }
 
     function onInterruptRequestButtonClick() {
@@ -287,6 +254,17 @@ export default {
       link.remove()
     }
 
+    function onButtonDownloadTagsClick() {
+      const link = document.createElement('a')
+      const pathTagsReport = 'tags.csv'
+      link.setAttribute('download', pathTagsReport)
+      link.setAttribute('type', 'application/octet-stream')
+      link.setAttribute('href', 'tags.csv')
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    }
+
     function onButtonRemoveOptionClick(option) {
       let index = sensorsAndTemplateOptions.value[0].options.indexOf(option)
       if (index >= 0) {
@@ -304,8 +282,7 @@ export default {
     async function onBigRequestButtonClick() {
       dialogBigRequestActive.value = false
 
-      statusRequestTextArea.value +=
-        'Подготовка к выполнению долгого запроса\n'
+      statusRequestTextArea.value += 'Подготовка к выполнению долгого запроса\n'
 
       filters.value = {
         'Наименование датчика': {
@@ -334,7 +311,6 @@ export default {
       progressBarBounceSignals.value = '100'
       progressBarBounceSignalsActive.value = false
       await context.emit('toggleButtonDialogConfigurator', false)
-
     }
 
     return {
@@ -374,11 +350,11 @@ export default {
       onChangeCheckbox,
       onButtonDownloadCsvClick,
       onButtonDownloadPdfClick,
+      onButtonDownloadTagsClick,
       onButtonRemoveOptionClick,
       estimatedTime,
       chosenSensors,
       dialogBigRequestActive,
-      scrolledTagBigRequestTextArea,
       onButtonCancelBigRequestClick,
       onBigRequestButtonClick
     }
@@ -557,29 +533,17 @@ export default {
             <div class="container">
               <div class="row">
                 <div class="col">
-                  <b>Запрошенные теги</b>
-                </div>
-              </div>
-              <div class="row">
-                <div class="col">
-                  <TextArea
-                    id="big-request-text-area"
-                    v-model="scrolledTagBigRequestTextArea"
-                    rows="10"
-                    cols="80"
-                    readonly
-                    :style="{ resize: 'none', 'overflow-y': scroll }"
-                    >{{ scrolledTagBigRequestTextArea }}</TextArea
-                  >
-                </div>
-              </div>
-              <div class="row">
-                <div class="col">
                   Примерная оценка времени выполнения запроса: <b>{{ estimatedTime }} чаc.</b>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col">
+                  Количество запрошенных тегов: <b>{{ chosenSensors.length }}</b>
                 </div>
               </div>
             </div>
             <template #footer>
+              <Button @click="onButtonDownloadTagsClick">Список тегов</Button>
               <Button
                 label="Отмена"
                 icon="pi pi-times"
@@ -609,7 +573,9 @@ export default {
           <ProgressBar :value="progressBarBounceSignals"></ProgressBar>
         </div>
         <div class="col-2">
-          <Button @click="onInterruptRequestButtonClick" :disabled="interruptDisabledFlag">Прервать запрос</Button>
+          <Button @click="onInterruptRequestButtonClick" :disabled="interruptDisabledFlag"
+            >Прервать запрос</Button
+          >
         </div>
       </div>
       <div class="row" v-if="progressBarBounceSignalsActive">

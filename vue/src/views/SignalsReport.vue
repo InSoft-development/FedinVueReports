@@ -2,7 +2,13 @@
 import { FilterMatchMode } from 'primevue/api'
 import Multiselect from '@vueform/multiselect'
 import { ref, onMounted, onUnmounted, onBeforeUnmount, computed } from 'vue'
-import { getKKSFilterByMasks, getTypesOfSensors, getSignals, cancelSignals, getKKSByMasksForTable } from '../stores'
+import {
+  getKKSFilterByMasks,
+  getTypesOfSensors,
+  getSignals,
+  cancelSignals,
+  getKKSByMasksForTable
+} from '../stores'
 
 import { useApplicationStore } from '../stores/applicationStore'
 
@@ -87,17 +93,12 @@ export default {
     const chosenSensors = ref([])
 
     const dialogBigRequestActive = ref(false)
-    const scrolledTagBigRequestTextArea = ref('')
 
     const interruptDisabledFlag = ref(false)
 
     onMounted(async () => {
       await getTypesOfSensors(typesOfSensorsDataOptions)
-      // disabledSensorsAndTemplate.value = true
-      // await getKKSFilterByMasks(sensorsAndTemplateOptions, chosenTypesOfSensorsData, chosenSensorsAndTemplate)
-      // disabledSensorsAndTemplate.value = false
       window.addEventListener('beforeunload', async (event) => {
-        // await context.emit('toggleButtonDialogConfigurator', false)
         await cancelSignals()
       })
     })
@@ -182,7 +183,6 @@ export default {
     }
 
     async function onMultiselectSensorsAndTemplateDeselect(val, option) {
-
       return
     }
 
@@ -232,52 +232,7 @@ export default {
         (chosenSensors.value.length * chosenQuality.length) /
         applicationStore.estimatedSliceRateInHours
 
-      // Если расчетное время больше предельного, то выдаем пользователю диалоговое окно с подтверждением запроса
-      if (estimatedTime.value >= applicationStore.sliceTimeLimitInHours) {
-        scrolledTagBigRequestTextArea.value = ''
-        scrolledTagBigRequestTextArea.value = sensorsAndTemplateOptions.value[1].options.join('\n')
-        dialogBigRequestActive.value = true
-        return
-      }
-
-      filters.value = {
-        'Код сигнала (KKS)': {
-          value: null,
-          matchMode: FilterMatchMode.STARTS_WITH
-        },
-        'Дата и время измерения': {
-          value: null,
-          matchMode: FilterMatchMode.STARTS_WITH
-        },
-        Значение: {
-          value: null,
-          matchMode: FilterMatchMode.STARTS_WITH
-        },
-        Качество: {
-          value: null,
-          matchMode: FilterMatchMode.STARTS_WITH
-        },
-        'Код качества': {
-          value: null,
-          matchMode: FilterMatchMode.STARTS_WITH
-        }
-      }
-
-      interruptDisabledFlag.value = false
-
-      await getSignals(
-        chosenTypesOfSensorsData,
-        chosenSensorsAndTemplate,
-        chosenQuality,
-        dateTime.value,
-        dateDeepOfSearch.value,
-        dataTable,
-        dataTableRequested
-      )
-      dateTimeEndReport.value = new Date().toLocaleString()
-      progressBarSignals.value = '100'
-      progressBarSignalsActive.value = false
-      await context.emit('toggleButtonDialogConfigurator', false)
+      dialogBigRequestActive.value = true
     }
 
     async function onInterruptRequestButtonClick() {
@@ -340,6 +295,17 @@ export default {
       link.remove()
     }
 
+    function onButtonDownloadTagsClick() {
+      const link = document.createElement('a')
+      const pathTagsReport = 'tags.csv'
+      link.setAttribute('download', pathTagsReport)
+      link.setAttribute('type', 'application/octet-stream')
+      link.setAttribute('href', 'tags.csv')
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    }
+
     function onButtonRemoveOptionClick(option) {
       let index = sensorsAndTemplateOptions.value[0].options.indexOf(option)
       if (index >= 0) {
@@ -357,8 +323,7 @@ export default {
     async function onBigRequestButtonClick() {
       dialogBigRequestActive.value = false
 
-      statusRequestTextArea.value +=
-        'Подготовка к выполнению долгого запроса\n'
+      statusRequestTextArea.value += 'Подготовка к выполнению долгого запроса\n'
 
       filters.value = {
         'Код сигнала (KKS)': {
@@ -442,11 +407,11 @@ export default {
       setProgressBarSignals,
       onButtonDownloadCsvClick,
       onButtonDownloadPdfClick,
+      onButtonDownloadTagsClick,
       onButtonRemoveOptionClick,
       estimatedTime,
       chosenSensors,
       dialogBigRequestActive,
-      scrolledTagBigRequestTextArea,
       onButtonCancelBigRequestClick,
       onBigRequestButtonClick
     }
@@ -591,7 +556,7 @@ export default {
             v-model="dialogBigRequestActive"
             :visible="dialogBigRequestActive"
             :closable="false"
-            header="Подтверждение запуска длительного по времени запроса"
+            header="Подтверждение запуска запроса"
             position="center"
             :modal="true"
             :draggable="false"
@@ -600,29 +565,17 @@ export default {
             <div class="container">
               <div class="row">
                 <div class="col">
-                  <b>Запрошенные теги</b>
-                </div>
-              </div>
-              <div class="row">
-                <div class="col">
-                  <TextArea
-                    id="big-request-text-area"
-                    v-model="scrolledTagBigRequestTextArea"
-                    rows="10"
-                    cols="80"
-                    readonly
-                    :style="{ resize: 'none', 'overflow-y': scroll }"
-                    >{{ scrolledTagBigRequestTextArea }}</TextArea
-                  >
-                </div>
-              </div>
-              <div class="row">
-                <div class="col">
                   Примерная оценка времени выполнения запроса: <b>{{ estimatedTime }} чаc.</b>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col">
+                  Количество запрошенных тегов: <b>{{ chosenSensors.length }}</b>
                 </div>
               </div>
             </div>
             <template #footer>
+              <Button @click="onButtonDownloadTagsClick">Список тегов</Button>
               <Button
                 label="Отмена"
                 icon="pi pi-times"
@@ -652,7 +605,9 @@ export default {
           <ProgressBar :value="progressBarSignals"></ProgressBar>
         </div>
         <div class="col-2">
-          <Button @click="onInterruptRequestButtonClick" :disabled="interruptDisabledFlag">Прервать запрос</Button>
+          <Button @click="onInterruptRequestButtonClick" :disabled="interruptDisabledFlag"
+            >Прервать запрос</Button
+          >
         </div>
       </div>
       <div class="row" v-if="progressBarSignalsActive">

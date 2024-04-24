@@ -26,6 +26,7 @@ CSV_BOUNCE = f'{REPORTS_DIRECTORY}bounce.csv'
 CSV_SIGNALS = f'{REPORTS_DIRECTORY}signals_slice.csv'
 CSV_GRID = f'{REPORTS_DIRECTORY}grid.csv'
 CSV_CODE = f'{REPORTS_DIRECTORY}code.csv'
+CSV_TAGS = f'{REPORTS_DIRECTORY}tags.csv'
 
 WEB_DIR = f'web{os.sep}'
 WEB_DIR_REPORT = f'{WEB_DIR}report{os.sep}'
