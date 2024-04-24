@@ -381,6 +381,7 @@ export default {
           limit="-1"
           :can-clear="false"
           @change="onTypesOfSensorsDataChange"
+          :disabled="progressBarBounceSignalsActive"
         ></Multiselect>
       </div>
       <div class="row">
@@ -392,7 +393,7 @@ export default {
             id="sensorsAndTemplateBounceReport"
             v-model="sensorsAndTemplateValue"
             mode="tags"
-            :disabled="disabledSensorsAndTemplate"
+            :disabled="disabledSensorsAndTemplate || progressBarBounceSignalsActive"
             :close-on-select="false"
             :groups="true"
             :options="sensorsAndTemplateOptions"
@@ -445,24 +446,48 @@ export default {
             date-format="dd/mm/yy"
             show-icon
             show-button-bar
-            :disabled="disableTime"
+            :disabled="disableTime || progressBarBounceSignalsActive"
           >
           </Calendar>
         </div>
         <div class="col-md-auto">
-          <RadioButton v-model="intervalRadio" inputId="day" name="day" value="day" />
+          <RadioButton
+            v-model="intervalRadio"
+            inputId="day"
+            name="day"
+            value="day"
+            :disabled="progressBarBounceSignalsActive"
+          />
           <label for="day">&nbsp;&nbsp;День</label>
         </div>
         <div class="col-md-auto">
-          <RadioButton v-model="intervalRadio" inputId="hour" name="hour" value="hour" />
+          <RadioButton
+            v-model="intervalRadio"
+            inputId="hour"
+            name="hour"
+            value="hour"
+            :disabled="progressBarBounceSignalsActive"
+          />
           <label for="hour">&nbsp;&nbsp;Час</label>
         </div>
         <div class="col-md-auto">
-          <RadioButton v-model="intervalRadio" inputId="minute" name="minute" value="minute" />
+          <RadioButton
+            v-model="intervalRadio"
+            inputId="minute"
+            name="minute"
+            value="minute"
+            :disabled="progressBarBounceSignalsActive"
+          />
           <label for="minute">&nbsp;&nbsp;Минута</label>
         </div>
         <div class="col-md-auto">
-          <RadioButton v-model="intervalRadio" inputId="second" name="second" value="second" />
+          <RadioButton
+            v-model="intervalRadio"
+            inputId="second"
+            name="second"
+            value="second"
+            :disabled="progressBarBounceSignalsActive"
+          />
           <label for="second">&nbsp;&nbsp;Секунда</label>
         </div>
         <div class="col-md-auto">
@@ -471,6 +496,7 @@ export default {
             v-model="currentDateChecked"
             :binary="true"
             @change="onChangeCheckbox"
+            :disabled="progressBarBounceSignalsActive"
           ></Checkbox>
           <label for="current-date-checked">Использовать текущее время</label>
         </div>
@@ -496,6 +522,7 @@ export default {
             :step="1"
             :allow-empty="false"
             :aria-label="interval"
+            :disabled="progressBarBounceSignalsActive"
           >
           </InputNumber>
         </div>
@@ -511,6 +538,7 @@ export default {
             :step="1"
             :allow-empty="false"
             :aria-label="countShowSensors"
+            :disabled="progressBarBounceSignalsActive"
           >
           </InputNumber>
         </div>

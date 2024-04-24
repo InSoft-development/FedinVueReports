@@ -482,6 +482,7 @@ export default {
             limit="-1"
             :can-clear="false"
             @change="onTypesOfSensorsDataChange"
+            :disabled="progressBarGridActive"
           ></Multiselect>
         </div>
       </div>
@@ -494,7 +495,7 @@ export default {
             id="sensorsAndTemplateGridReport"
             v-model="sensorsAndTemplateValue"
             mode="tags"
-            :disabled="disabledSensorsAndTemplate"
+            :disabled="disabledSensorsAndTemplate || progressBarGridActive"
             :close-on-select="false"
             :groups="true"
             :options="sensorsAndTemplateOptions"
@@ -552,6 +553,7 @@ export default {
             date-format="dd/mm/yy"
             show-icon
             show-button-bar
+            :disabled="progressBarGridActive"
           >
           </Calendar>
         </div>
@@ -567,6 +569,7 @@ export default {
             date-format="dd/mm/yy"
             show-icon
             show-button-bar
+            :disabled="progressBarGridActive"
           >
           </Calendar>
         </div>
@@ -589,23 +592,48 @@ export default {
             :step="1"
             :allow-empty="false"
             :aria-label="interval"
+            :disabled="progressBarGridActive"
           >
           </InputNumber>
         </div>
         <div class="col">
-          <RadioButton v-model="intervalRadio" inputId="day" name="day" value="day" />
+          <RadioButton
+            v-model="intervalRadio"
+            inputId="day"
+            name="day"
+            value="day"
+            :disabled="progressBarGridActive"
+          />
           <label for="day">&nbsp;&nbsp;День</label>
         </div>
         <div class="col">
-          <RadioButton v-model="intervalRadio" inputId="hour" name="hour" value="hour" />
+          <RadioButton
+            v-model="intervalRadio"
+            inputId="hour"
+            name="hour"
+            value="hour"
+            :disabled="progressBarGridActive"
+          />
           <label for="hour">&nbsp;&nbsp;Час</label>
         </div>
         <div class="col">
-          <RadioButton v-model="intervalRadio" inputId="minute" name="minute" value="minute" />
+          <RadioButton
+            v-model="intervalRadio"
+            inputId="minute"
+            name="minute"
+            value="minute"
+            :disabled="progressBarGridActive"
+          />
           <label for="minute">&nbsp;&nbsp;Минута</label>
         </div>
         <div class="col">
-          <RadioButton v-model="intervalRadio" inputId="second" name="second" value="second" />
+          <RadioButton
+            v-model="intervalRadio"
+            inputId="second"
+            name="second"
+            value="second"
+            :disabled="progressBarGridActive"
+          />
           <label for="second">&nbsp;&nbsp;Секунда</label>
         </div>
       </div>

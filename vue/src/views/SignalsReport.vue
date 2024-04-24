@@ -439,6 +439,7 @@ export default {
             limit="-1"
             :can-clear="false"
             @change="onTypesOfSensorsDataChange"
+            :disabled="progressBarSignalsActive"
           ></Multiselect>
         </div>
       </div>
@@ -451,7 +452,7 @@ export default {
             id="sensorsAndTemplateSignalsReport"
             v-model="sensorsAndTemplateValue"
             mode="tags"
-            :disabled="disabledSensorsAndTemplate"
+            :disabled="disabledSensorsAndTemplate || progressBarSignalsActive"
             :close-on-select="false"
             :groups="true"
             :options="sensorsAndTemplateOptions"
@@ -502,6 +503,7 @@ export default {
             placeholder="Выберите код качества сигнала"
             limit="-1"
             @change="onMultiselectQualitiesChange"
+            :disabled="progressBarSignalsActive"
           ></Multiselect>
         </div>
       </div>
@@ -525,6 +527,7 @@ export default {
             show-icon
             show-button-bar
             @click="onDateDeepOfSearchClick"
+            :disabled="progressBarSignalsActive"
           ></Calendar>
         </div>
       </div>
@@ -546,6 +549,7 @@ export default {
             date-format="dd/mm/yy"
             show-icon
             show-button-bar
+            :disabled="progressBarSignalsActive"
           ></Calendar>
         </div>
         <div class="col">
