@@ -38,11 +38,8 @@ export default {
         label: 'Шаблоны',
         options: [
           'Sochi2\\.GT\\.AM\\.\\S*-AM\\.Q?$',
-          '.*\\.state\\..*',
           '.*-icCV_.*\\.state\\..*',
-          'Sochi2\\.GT\\.AM\\..*',
-          'Sochi2\\..*',
-          'Unit2\\..*'
+          'Sochi2\\.GT\\.AM\\..*'
         ]
       },
       {
@@ -54,14 +51,14 @@ export default {
     const disabledSensorsAndTemplate = ref(true)
     const isLoadingSensorsAndTemplate = ref(false)
 
-    const dateTimeBegin = ref()
-    const dateTimeEnd = ref()
+    const dateTimeBegin = ref(new Date())
+    const dateTimeEnd = ref(new Date())
 
     const dateTimeBeginReport = ref()
     const dateTimeEndReport = ref()
 
     const interval = ref(5)
-    const intervalRadio = ref('minute')
+    const intervalRadio = ref('hour')
 
     const progressBarGrid = ref('0')
     const progressBarGridActive = ref(false)
@@ -132,6 +129,7 @@ export default {
     }
 
     async function onMultiselectSensorsAndTemplateChange(val) {
+      window.removeEventListener('click', outsideGridMultiselectClick)
       if (
         window.event.target.id.includes('divRemoveButton') ||
         window.event.target.id.includes('removeButton') ||
@@ -156,9 +154,12 @@ export default {
     }
 
     function onMultiselectSensorsAndTemplateCreateTag(query) {
+      window.removeEventListener('click', outsideGridMultiselectClick)
       sensorsAndTemplateOptions.value[0].options.push(query['value'])
       sensorsAndTemplateValue.value.push(query['value'])
     }
+
+    let tempQuery = null
 
     async function onMultiselectSensorsAndTemplateSearchChange(query) {
       // Последовательная фильтрация по регуляркам
@@ -173,9 +174,26 @@ export default {
           chosenFilterSensorsAndTemplate
         )
         isLoadingSensorsAndTemplate.value = false
-      }, 1000)
+
+        tempQuery = query
+        window.addEventListener('click', outsideGridMultiselectClick)
+      }, 1500)
       // Можно заменить на фильтр только по вводимой регулярке
       // await getKKSFilterByMasks(sensorsAndTemplateOptions, chosenTypesOfSensorsData, query)
+    }
+
+    function outsideGridMultiselectClick(event) {
+      if (
+        sensorsAndTemplateOptions.value[0].options.includes(String(tempQuery)) ||
+        String(tempQuery) === ''
+      )
+        return
+      let multiselectElement = document.getElementById('sensorsAndTemplateGridReport')
+      let isClickOutside = !multiselectElement.contains(event.target)
+      if (isClickOutside) {
+        sensorsAndTemplateOptions.value[0].options.push(String(tempQuery))
+        sensorsAndTemplateValue.value.push(String(tempQuery))
+      }
     }
 
     async function onMultiselectSensorsAndTemplateSelect(val, option) {
@@ -406,6 +424,14 @@ export default {
       verticalScroll.addEventListener('scroll', synchroScroll, false)
     }
 
+    function onDateBeginTodayClick() {
+      dateTimeBegin.value = new Date()
+    }
+
+    function onDateEndTodayClick() {
+      dateTimeEnd.value = new Date()
+    }
+
     return {
       typesOfSensorsDataValue,
       typesOfSensorsDataOptions,
@@ -425,6 +451,8 @@ export default {
       dateTimeEnd,
       dateTimeBeginReport,
       dateTimeEndReport,
+      onDateBeginTodayClick,
+      onDateEndTodayClick,
       interval,
       intervalRadio,
       progressBarGrid,
@@ -549,11 +577,13 @@ export default {
             hour-format="24"
             show-seconds="true"
             placeholder="ДД/ММ/ГГ ЧЧ:ММ:СС"
-            manualInput="false"
+            :manualInput="true"
             date-format="dd/mm/yy"
             show-icon
             show-button-bar
             :disabled="progressBarGridActive"
+            :showOnFocus="false"
+            @todayClick="onDateBeginTodayClick"
           >
           </Calendar>
         </div>
@@ -565,11 +595,13 @@ export default {
             hour-format="24"
             show-seconds="true"
             placeholder="ДД/ММ/ГГ ЧЧ:ММ:СС"
-            manualInput="false"
+            :manualInput="true"
             date-format="dd/mm/yy"
             show-icon
             show-button-bar
             :disabled="progressBarGridActive"
+            :showOnFocus="false"
+            @todayClick="onDateEndTodayClick"
           >
           </Calendar>
         </div>

@@ -37,11 +37,8 @@ export default {
         label: 'Шаблоны',
         options: [
           'Sochi2\\.GT\\.AM\\.\\S*-AM\\.Q?$',
-          '.*\\.state\\..*',
           '.*-icCV_.*\\.state\\..*',
-          'Sochi2\\.GT\\.AM\\..*',
-          'Sochi2\\..*',
-          'Unit2\\..*'
+          'Sochi2\\.GT\\.AM\\..*'
         ]
       },
       {
@@ -67,8 +64,8 @@ export default {
     const quality = ref(null)
     let chosenQuality = []
 
-    const dateTime = ref()
-    const dateDeepOfSearch = ref()
+    const dateTime = ref(new Date())
+    const dateDeepOfSearch = ref(new Date())
     const maxDateTime = ref(new Date())
     const dateTimeBeginReport = ref()
     const dateTimeEndReport = ref()
@@ -131,6 +128,7 @@ export default {
     }
 
     async function onMultiselectSensorsAndTemplateChange(val) {
+      window.removeEventListener('click', outsideSignalMultiselectClick)
       if (
         window.event.target.id.includes('divRemoveButton') ||
         window.event.target.id.includes('removeButton') ||
@@ -155,10 +153,13 @@ export default {
     }
 
     function onMultiselectSensorsAndTemplateCreateTag(query) {
+      window.removeEventListener('click', outsideSignalMultiselectClick)
       if (sensorsAndTemplateOptions.value[0].options.includes(query['value'])) return
       sensorsAndTemplateOptions.value[0].options.push(query['value'])
       sensorsAndTemplateValue.value.push(query['value'])
     }
+
+    let tempQuery = null
 
     async function onMultiselectSensorsAndTemplateSearchChange(query) {
       // Последовательная фильтрация по регуляркам
@@ -173,9 +174,26 @@ export default {
           chosenFilterSensorsAndTemplate
         )
         isLoadingSensorsAndTemplate.value = false
-      }, 1000)
+
+        tempQuery = query
+        window.addEventListener('click', outsideSignalMultiselectClick)
+      }, 1500)
       // Можно заменить на фильтр только по вводимой регулярке
       // await getKKSFilterByMasks(sensorsAndTemplateOptions, chosenTypesOfSensorsData, query)
+    }
+
+    function outsideSignalMultiselectClick(event) {
+      if (
+        sensorsAndTemplateOptions.value[0].options.includes(String(tempQuery)) ||
+        String(tempQuery) === ''
+      )
+        return
+      let multiselectElement = document.getElementById('sensorsAndTemplateSignalsReport')
+      let isClickOutside = !multiselectElement.contains(event.target)
+      if (isClickOutside) {
+        sensorsAndTemplateOptions.value[0].options.push(String(tempQuery))
+        sensorsAndTemplateValue.value.push(String(tempQuery))
+      }
     }
 
     async function onMultiselectSensorsAndTemplateSelect(val, option) {
@@ -192,6 +210,14 @@ export default {
 
     function onDateDeepOfSearchClick() {
       maxDateTime.value = new Date()
+    }
+
+    function onDateTodayClick() {
+      dateTime.value = new Date()
+    }
+
+    function onDateDeepOfSearchTodayClick() {
+      dateDeepOfSearch.value = new Date()
     }
 
     async function onRequestButtonClick() {
@@ -388,6 +414,8 @@ export default {
       maxDateTime,
       dateDeepOfSearch,
       onDateDeepOfSearchClick,
+      onDateTodayClick,
+      onDateDeepOfSearchTodayClick,
       dateTimeBeginReport,
       dateTimeEndReport,
       onRequestButtonClick,
@@ -522,12 +550,14 @@ export default {
             hour-format="24"
             show-seconds="true"
             placeholder="ДД/ММ/ГГ ЧЧ:ММ:СС"
-            manualInput="false"
+            :manualInput="true"
             date-format="dd/mm/yy"
             show-icon
             show-button-bar
             @click="onDateDeepOfSearchClick"
             :disabled="progressBarSignalsActive"
+            :showOnFocus="false"
+            @todayClick="onDateDeepOfSearchTodayClick"
           ></Calendar>
         </div>
       </div>
@@ -545,11 +575,13 @@ export default {
             hour-format="24"
             show-seconds="true"
             placeholder="ДД/ММ/ГГ ЧЧ:ММ:СС"
-            manualInput="false"
+            :manualInput="true"
             date-format="dd/mm/yy"
             show-icon
             show-button-bar
             :disabled="progressBarSignalsActive"
+            :showOnFocus="false"
+            @todayClick="onDateTodayClick"
           ></Calendar>
         </div>
         <div class="col">

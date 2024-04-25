@@ -550,8 +550,8 @@ def get_signals_data(types_list, mask_list, kks_list, quality, date, date_deep_s
         except Exception as e:
             # Если произошла ошибка с sqlite, то ловим и выводим исключение
             logger.error(f"{constants.CLIENT_COMMON_DATA_TABLE} is empty: {e}")
-            eel.setUpdateSignalsRequestStatus(f"Никаких данных за год не нашлось\n")
-            return f"Никаких данных за год не нашлось"
+            eel.setUpdateSignalsRequestStatus(f"Никаких данных не нашлось\n")
+            return f"Никаких данных не нашлось"
         finally:
             con_common_data.close()
 
@@ -970,7 +970,7 @@ def get_analog_signals_data(kks, quality, date):
                 con_common_data, parse_dates=['t'])
         except Exception as e:
             logger.error(f"{constants.CLIENT_COMMON_DATA_TABLE} is empty: {e}")
-            return f"Никаких данных за год не нашлось"
+            return f"Никаких данных не нашлось"
         finally:
             con_common_data.close()
 
@@ -1141,7 +1141,7 @@ def get_discrete_signals_data(kks, values, quality, date):
                 con_common_data, parse_dates=['t'])
         except Exception as e:
             logger.error(f"{constants.CLIENT_COMMON_DATA_TABLE} is empty: {e}")
-            return f"Никаких данных за год не нашлось"
+            return f"Никаких данных нашлось"
         finally:
             con_common_data.close()
 

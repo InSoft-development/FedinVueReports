@@ -45,7 +45,9 @@ app.use(PrimeVue, {
     endsWith: 'Кончается на',
     equals: '=',
     notEquals: '!=',
-    noFilter: 'Без фильтрации'
+    noFilter: 'Без фильтрации',
+    today: 'Текущее время',
+    clear: 'Сброс'
   }
 })
 // app.use(PrimeVue)

@@ -38,11 +38,8 @@ export default {
         label: 'Шаблоны',
         options: [
           'Sochi2\\.GT\\.AM\\.\\S*-AM\\.Q?$',
-          '.*\\.state\\..*',
           '.*-icCV_.*\\.state\\..*',
-          'Sochi2\\.GT\\.AM\\..*',
-          'Sochi2\\..*',
-          'Unit2\\..*'
+          'Sochi2\\.GT\\.AM\\..*'
         ]
       },
       {
@@ -54,14 +51,14 @@ export default {
     const disabledSensorsAndTemplate = ref(true)
     const isLoadingSensorsAndTemplate = ref(false)
 
-    const dateTime = ref()
+    const dateTime = ref(new Date())
     const disableTime = ref(false)
 
     const dateTimeBeginReport = ref()
     const dateTimeEndReport = ref()
 
     const interval = ref(5)
-    const intervalRadio = ref('minute')
+    const intervalRadio = ref('hour')
 
     const progressBarBounceSignals = ref('0')
     const progressBarBounceSignalsActive = ref(false)
@@ -126,6 +123,7 @@ export default {
     }
 
     async function onMultiselectSensorsAndTemplateChange(val) {
+      window.removeEventListener('click', outsideBounceMultiselectClick)
       if (
         window.event.target.id.includes('divRemoveButton') ||
         window.event.target.id.includes('removeButton') ||
@@ -150,9 +148,12 @@ export default {
     }
 
     function onMultiselectSensorsAndTemplateCreateTag(query) {
+      window.removeEventListener('click', outsideBounceMultiselectClick)
       sensorsAndTemplateOptions.value[0].options.push(query['value'])
       sensorsAndTemplateValue.value.push(query['value'])
     }
+
+    let tempQuery = null
 
     async function onMultiselectSensorsAndTemplateSearchChange(query) {
       // Последовательная фильтрация по регуляркам
@@ -167,9 +168,26 @@ export default {
           chosenFilterSensorsAndTemplate
         )
         isLoadingSensorsAndTemplate.value = false
-      }, 1000)
+
+        tempQuery = query
+        window.addEventListener('click', outsideBounceMultiselectClick)
+      }, 1500)
       // Можно заменить на фильтр только по вводимой регулярке
       // await getKKSFilterByMasks(sensorsAndTemplateOptions, chosenTypesOfSensorsData, query)
+    }
+
+    function outsideBounceMultiselectClick(event) {
+      if (
+        sensorsAndTemplateOptions.value[0].options.includes(String(tempQuery)) ||
+        String(tempQuery) === ''
+      )
+        return
+      let multiselectElement = document.getElementById('sensorsAndTemplateBounceReport')
+      let isClickOutside = !multiselectElement.contains(event.target)
+      if (isClickOutside) {
+        sensorsAndTemplateOptions.value[0].options.push(String(tempQuery))
+        sensorsAndTemplateValue.value.push(String(tempQuery))
+      }
     }
 
     async function onRequestButtonClick() {
@@ -313,6 +331,10 @@ export default {
       await context.emit('toggleButtonDialogConfigurator', false)
     }
 
+    function onDateTodayClick() {
+      dateTime.value = new Date()
+    }
+
     return {
       typesOfSensorsDataValue,
       typesOfSensorsDataOptions,
@@ -330,6 +352,7 @@ export default {
       disableTime,
       dateTimeBeginReport,
       dateTimeEndReport,
+      onDateTodayClick,
       interval,
       intervalRadio,
       progressBarBounceSignals,
@@ -442,11 +465,13 @@ export default {
             hour-format="24"
             show-seconds="true"
             placeholder="ДД/ММ/ГГ ЧЧ:ММ:СС"
-            manualInput="false"
+            :manualInput="true"
             date-format="dd/mm/yy"
             show-icon
             show-button-bar
             :disabled="disableTime || progressBarBounceSignalsActive"
+            :showOnFocus="false"
+            @todayClick="onDateTodayClick"
           >
           </Calendar>
         </div>
