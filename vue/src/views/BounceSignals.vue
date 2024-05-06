@@ -2,7 +2,7 @@
 import { FilterMatchMode } from 'primevue/api'
 import Multiselect from '@vueform/multiselect'
 
-import { ref, onMounted, onUnmounted, onBeforeUnmount, computed } from 'vue'
+import { ref, onMounted, onUnmounted, onBeforeUnmount, computed, watch } from 'vue'
 import {
   getKKSFilterByMasks,
   getTypesOfSensors,
@@ -23,32 +23,51 @@ export default {
   setup(props, context) {
     const applicationStore = useApplicationStore()
 
-    const typesOfSensorsDataValue = ref(null)
+    function updateDefaultFields() {
+      typesOfSensorsDataValue.value = applicationStore.defaultFields.typesOfSensors
+      typesOfSensorsDataOptions.value[0].options = applicationStore.defaultFields.typesOfSensors
+      chosenTypesOfSensorsData = applicationStore.defaultFields.typesOfSensors
+
+      sensorsAndTemplateValue.value = applicationStore.defaultFields.sensorsAndTemplateValue
+      sensorsAndTemplateOptions.value[0].options =
+        applicationStore.defaultFields.sensorsAndTemplateValue
+      chosenSensorsAndTemplate = applicationStore.defaultFields.sensorsAndTemplateValue
+
+      interval.value = applicationStore.defaultFields.interval
+      intervalRadio.value = applicationStore.defaultFields.dimension
+      countShowSensors.value = applicationStore.defaultFields.countShowSensors
+    }
+
+    watch(
+      () => applicationStore.defaultFields,
+      (before, after) => {
+        updateDefaultFields()
+      },
+      { deep: true }
+    )
+
+    const typesOfSensorsDataValue = ref(applicationStore.defaultFields.typesOfSensors)
     const typesOfSensorsDataOptions = ref([
       {
         label: 'Выбрать все типы данных',
-        options: []
+        options: applicationStore.defaultFields.typesOfSensors
       }
     ])
-    let chosenTypesOfSensorsData = []
+    let chosenTypesOfSensorsData = applicationStore.defaultFields.typesOfSensors
 
-    const sensorsAndTemplateValue = ref([])
+    const sensorsAndTemplateValue = ref(applicationStore.defaultFields.sensorsAndTemplateValue)
     const sensorsAndTemplateOptions = ref([
       {
         label: 'Шаблоны',
-        options: [
-          'Sochi2\\.GT\\.AM\\.\\S*-AM\\.Q?$',
-          '.*-icCV_.*\\.state\\..*',
-          'Sochi2\\.GT\\.AM\\..*'
-        ]
+        options: applicationStore.defaultFields.sensorsAndTemplateValue
       },
       {
         label: 'Теги KKS сигналов',
         options: []
       }
     ])
-    let chosenSensorsAndTemplate = []
-    const disabledSensorsAndTemplate = ref(true)
+    let chosenSensorsAndTemplate = applicationStore.defaultFields.sensorsAndTemplateValue
+    const disabledSensorsAndTemplate = ref(!chosenTypesOfSensorsData.length)
     const isLoadingSensorsAndTemplate = ref(false)
 
     const dateTime = ref(new Date())
@@ -57,8 +76,8 @@ export default {
     const dateTimeBeginReport = ref()
     const dateTimeEndReport = ref()
 
-    const interval = ref(5)
-    const intervalRadio = ref('hour')
+    const interval = ref(applicationStore.defaultFields.interval)
+    const intervalRadio = ref(applicationStore.defaultFields.dimension)
 
     const progressBarBounceSignals = ref('0')
     const progressBarBounceSignalsActive = ref(false)
@@ -68,7 +87,7 @@ export default {
       return props.collapsedSidebar ? 115 : 90
     })
 
-    const countShowSensors = ref(10)
+    const countShowSensors = ref(applicationStore.defaultFields.countShowSensors)
 
     const currentDateChecked = ref(false)
 
@@ -93,6 +112,18 @@ export default {
       window.addEventListener('beforeunload', async (event) => {
         await cancelBounce()
       })
+
+      if (chosenSensorsAndTemplate.length && chosenTypesOfSensorsData.length) {
+        disabledSensorsAndTemplate.value = true
+        isLoadingSensorsAndTemplate.value = true
+        await getKKSFilterByMasks(
+          sensorsAndTemplateOptions,
+          chosenTypesOfSensorsData,
+          chosenSensorsAndTemplate
+        )
+        isLoadingSensorsAndTemplate.value = false
+        disabledSensorsAndTemplate.value = false
+      }
     })
 
     onBeforeUnmount(async () => {
@@ -336,6 +367,7 @@ export default {
     }
 
     return {
+      updateDefaultFields,
       typesOfSensorsDataValue,
       typesOfSensorsDataOptions,
       chosenTypesOfSensorsData,
@@ -402,7 +434,6 @@ export default {
           :create-option="false"
           placeholder="Выберите тип данных тегов"
           limit="-1"
-          :can-clear="false"
           @change="onTypesOfSensorsDataChange"
           :disabled="progressBarBounceSignalsActive"
         ></Multiselect>
@@ -456,7 +487,7 @@ export default {
           <label for="calendar-date">Введите дату</label>
         </div>
       </div>
-      <div class="row">
+      <div class="row align-items-center">
         <div class="col-4" style="padding-bottom: 20px">
           <Calendar
             id="calendar-date"
@@ -475,7 +506,7 @@ export default {
           >
           </Calendar>
         </div>
-        <div class="col-md-auto">
+        <div class="col-md-auto" style="padding-bottom: 20px">
           <RadioButton
             v-model="intervalRadio"
             inputId="day"
@@ -485,7 +516,7 @@ export default {
           />
           <label for="day">&nbsp;&nbsp;День</label>
         </div>
-        <div class="col-md-auto">
+        <div class="col-md-auto" style="padding-bottom: 20px">
           <RadioButton
             v-model="intervalRadio"
             inputId="hour"
@@ -495,7 +526,7 @@ export default {
           />
           <label for="hour">&nbsp;&nbsp;Час</label>
         </div>
-        <div class="col-md-auto">
+        <div class="col-md-auto" style="padding-bottom: 20px">
           <RadioButton
             v-model="intervalRadio"
             inputId="minute"
@@ -505,7 +536,7 @@ export default {
           />
           <label for="minute">&nbsp;&nbsp;Минута</label>
         </div>
-        <div class="col-md-auto">
+        <div class="col-md-auto" style="padding-bottom: 20px">
           <RadioButton
             v-model="intervalRadio"
             inputId="second"
@@ -515,7 +546,7 @@ export default {
           />
           <label for="second">&nbsp;&nbsp;Секунда</label>
         </div>
-        <div class="col-md-auto">
+        <div class="col-md-auto" style="padding-bottom: 20px">
           <Checkbox
             id="current-date-checked"
             v-model="currentDateChecked"

@@ -53,3 +53,12 @@ export async function cancelBounce() {
 export async function changeOpcServerConfig(ipOPC, portOPC) {
   await eel.change_opc_server_config(ipOPC, portOPC)()
 }
+
+/***
+ * Процедура изменения полей по умолчанию в конфиге
+ * @param defaultFields
+ * @returns {Promise<void>}
+ */
+export async function changeDefaultFields(defaultFields) {
+  await eel.change_default_fields(defaultFields)()
+}

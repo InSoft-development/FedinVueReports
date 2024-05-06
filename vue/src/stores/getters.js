@@ -36,6 +36,29 @@ export async function getLastUpdateFileKKS(lastUpdateFileKKS) {
 }
 
 /***
+ * Процедура получения полей по умолчанию из конфига
+ * @returns {Promise<void>}
+ */
+export async function getDefaultFields(defaultFields) {
+  let result = await eel.get_default_fields()()
+  if (typeof result === 'string') {
+    Object.assign(defaultFields, {
+      typesOfSensors: ['String', 'UInt32', 'Boolean', 'Float'],
+      sensorsAndTemplateValue: ['Sochi2\\.GT\\.AM\\.\\S*-AM\\.Q?$'],
+      quality: ['8 - (BNC) - ОТКАЗ СВЯЗИ (TIMEOUT)', '192 - (GOD) – ХОРОШ'],
+      dateDeepOfSearch: new Date(),
+      interval: 10,
+      dimension: 'hour',
+      countShowSensors: 10
+    })
+    alert(result)
+  } else {
+    Object.assign(defaultFields, result)
+    defaultFields.dateDeepOfSearch = new Date(defaultFields.dateDeepOfSearch)
+  }
+}
+
+/***
  * Процедура получения типов данных тегов файла kks_all.csv
  * @param typesOptions
  * @returns {Promise<void>}

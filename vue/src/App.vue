@@ -2,17 +2,28 @@
 import { ref, onMounted } from 'vue'
 import { useConfirm } from 'primevue/useconfirm'
 
+import Multiselect from '@vueform/multiselect'
+
 import {
   getServerConfig,
   getLastUpdateFileKKS,
   runUpdate,
   cancelUpdate,
   getIpAndPortConfig,
-  changeOpcServerConfig
+  changeOpcServerConfig,
+  getTypesOfSensors
 } from './stores'
 
+import { useApplicationStore } from './stores/applicationStore'
+
 export default {
+  components: { Multiselect },
   setup() {
+    const applicationStore = useApplicationStore()
+
+    applicationStore.getFields()
+    console.log(applicationStore.defaultFields)
+
     const sidebarMenu = [
       {
         header: 'Меню отчетов',
@@ -65,20 +76,115 @@ export default {
       })
     }
 
+    const defaultTypesOfSensorsDataValue = ref([])
+    const defaultTypesOfSensorsDataOptions = ref([
+      {
+        label: 'Выбрать все типы данных',
+        options: []
+      }
+    ])
+    let defaultChosenTypesOfSensorsData = []
+
+    async function onDefaultTypesOfSensorsDataChange(val) {
+      defaultChosenTypesOfSensorsData = val
+    }
+
+    const defaultTemplate = ref('')
+
+    const defaultQualitiesName = ref([
+      {
+        label: 'Выбрать все коды качества сигнала',
+        options: applicationStore.qualitiesName
+      }
+    ])
+    const defaultQuality = ref([])
+    let defaultChosenQuality = []
+
+    function onDefaultMultiselectQualitiesChange(val) {
+      defaultChosenQuality = val
+    }
+
+    const defaultDateDeepOfSearch = ref(new Date())
+    const defaultMaxDateTime = ref(new Date())
+
+    function onDefaultDateDeepOfSearchClick() {
+      defaultMaxDateTime.value = new Date()
+    }
+
+    function onDefaultDateDeepOfSearchTodayClick() {
+      defaultDateDeepOfSearch.value = new Date()
+    }
+
+    const defaultInterval = ref(0)
+    const defaultIntervalRadio = ref('')
+
+    const defaultCountShowSensors = ref(0)
+
+    const changeDefaultFields = () => {
+      let defaultFields = {
+        typesOfSensors: defaultChosenTypesOfSensorsData,
+        sensorsAndTemplateValue: defaultTemplate.value
+          .split(',')
+          .map((item) => item.trim())
+          .filter((item) => item.length),
+        quality: defaultChosenQuality,
+        dateDeepOfSearch: defaultDateDeepOfSearch.value,
+        interval: defaultInterval.value,
+        dimension: defaultIntervalRadio.value,
+        countShowSensors: defaultCountShowSensors.value
+      }
+      applicationStore.setFields(defaultFields)
+      alert('Параметры по умолчанию сохранены')
+      dialogConfiguratorActive.value = false
+    }
+
     onMounted(async () => {
       await getServerConfig(configServer, checkFileActive)
       await getLastUpdateFileKKS(lastUpdateFileKKS)
       await getIpAndPortConfig(ipOPC, portOPC)
+
       statusUpdateTextArea.value = configServer.value
       if (!checkFileActive.value)
         alert('Не найден файл kks_all.csv.\nСконфигурируйте клиент OPC UA и обновите файл тегов')
       window.addEventListener('beforeunload', async (event) => {
         await cancelUpdate()
       })
+
+      defaultTypesOfSensorsDataValue.value = applicationStore.defaultFields.typesOfSensors
+      await getTypesOfSensors(defaultTypesOfSensorsDataOptions)
+      defaultChosenTypesOfSensorsData = applicationStore.defaultFields.typesOfSensors
+
+      defaultTemplate.value = applicationStore.defaultFields.sensorsAndTemplateValue.join(', ')
+
+      defaultQuality.value = applicationStore.defaultFields.quality
+      defaultChosenQuality = applicationStore.defaultFields.quality
+
+      defaultDateDeepOfSearch.value = applicationStore.defaultFields.dateDeepOfSearch
+
+      defaultInterval.value = applicationStore.defaultFields.interval
+      defaultIntervalRadio.value = applicationStore.defaultFields.dimension
+
+      defaultCountShowSensors.value = applicationStore.defaultFields.countShowSensors
     })
 
     function onButtonDialogConfiguratorActive() {
       dialogConfiguratorActive.value = true
+
+      defaultTypesOfSensorsDataValue.value = applicationStore.defaultFields.typesOfSensors
+      getTypesOfSensors(defaultTypesOfSensorsDataOptions)
+      defaultChosenTypesOfSensorsData = applicationStore.defaultFields.typesOfSensors
+
+      defaultTemplate.value = applicationStore.defaultFields.sensorsAndTemplateValue.join(', ')
+
+      defaultQuality.value = applicationStore.defaultFields.quality
+      defaultChosenQuality = applicationStore.defaultFields.quality
+
+      defaultDateDeepOfSearch.value = applicationStore.defaultFields.dateDeepOfSearch
+
+      defaultInterval.value = applicationStore.defaultFields.interval
+      defaultIntervalRadio.value = applicationStore.defaultFields.dimension
+
+      defaultCountShowSensors.value = applicationStore.defaultFields.countShowSensors
     }
 
     async function onButtonDialogUpdate() {
@@ -145,7 +251,24 @@ export default {
       setUpdateStatus,
       onButtonCancelUpdateClick,
       toggleButton,
-      confirmUpdate
+      confirmUpdate,
+      defaultTypesOfSensorsDataValue,
+      defaultTypesOfSensorsDataOptions,
+      defaultChosenTypesOfSensorsData,
+      onDefaultTypesOfSensorsDataChange,
+      defaultTemplate,
+      defaultQualitiesName,
+      defaultQuality,
+      defaultChosenQuality,
+      onDefaultMultiselectQualitiesChange,
+      defaultDateDeepOfSearch,
+      defaultMaxDateTime,
+      onDefaultDateDeepOfSearchClick,
+      onDefaultDateDeepOfSearchTodayClick,
+      defaultInterval,
+      defaultIntervalRadio,
+      defaultCountShowSensors,
+      changeDefaultFields
     }
   }
 }
@@ -243,6 +366,182 @@ export default {
                 >{{ statusUpdateTextArea }}</TextArea
               >
             </div>
+          </div>
+          <hr />
+          <div class="row align-items-center">
+            <div class="col-8 text-start">
+              <h4>Установка параметров по умолчанию</h4>
+            </div>
+            <div class="col-4 text-end">
+              <Button @click="changeDefaultFields" :disabled="statusUpdateButtonActive"
+                >Сохранить параметры</Button
+              >
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <h4>Отбор тегов</h4>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <label for="typesOfSensorsDataSignals">Выберите тип данных тегов по умолчанию</label>
+              <Multiselect
+                id="typesOfSensorsDataSignals"
+                v-model="defaultTypesOfSensorsDataValue"
+                mode="tags"
+                :close-on-select="false"
+                :groups="true"
+                :options="defaultTypesOfSensorsDataOptions"
+                :searchable="true"
+                :create-option="false"
+                placeholder="Выберите тип данных тегов по умочанию"
+                limit="-1"
+                @change="onDefaultTypesOfSensorsDataChange"
+                :disabled="statusUpdateButtonActive"
+              ></Multiselect>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <label for="default-template"
+                >Шаблон тегов по умолчанию (перечислите шаблоны или теги через запятую)</label
+              >
+              <InputText
+                v-model="defaultTemplate"
+                type="text"
+                id="default-template"
+                :disabled="statusUpdateButtonActive"
+                style="width: 100%"
+              >
+              </InputText>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <h4>Параметры отчетов срезов</h4>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col text-start">
+              <label for="qualitySignals">Код качества сигнала по умолчанию</label>
+              <Multiselect
+                id="qualitySignals"
+                v-model="defaultQuality"
+                mode="tags"
+                :close-on-select="false"
+                :searchable="true"
+                :create-option="false"
+                :groups="true"
+                :options="defaultQualitiesName"
+                placeholder="Выберите код качества сигнала по умолчанию"
+                limit="-1"
+                @change="onDefaultMultiselectQualitiesChange"
+                :disabled="statusUpdateButtonActive"
+              ></Multiselect>
+            </div>
+            <div class="col text-end">
+              <label for="calendarDateDeepOfSearchSignals"
+                >Глубина поиска в архивах по умолчанию</label
+              >
+              <Calendar
+                id="calendarDateDeepOfSearchSignals"
+                v-model="defaultDateDeepOfSearch"
+                :maxDate="defaultMaxDateTime"
+                show-time
+                hour-format="24"
+                show-seconds="true"
+                placeholder="ДД/ММ/ГГ ЧЧ:ММ:СС"
+                :manualInput="true"
+                date-format="dd/mm/yy"
+                show-icon
+                show-button-bar
+                @click="onDefaultDateDeepOfSearchClick"
+                :showOnFocus="false"
+                @todayClick="onDefaultDateDeepOfSearchTodayClick"
+                :disabled="statusUpdateButtonActive"
+              ></Calendar>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <h4>Параметры отчетов сетки и дребезга</h4>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <label for="intervalGrid">Интервал по умолчанию</label>
+              <InputNumber
+                v-model="defaultInterval"
+                id="intervalGrid"
+                input-id="intervalGrid"
+                :useGrouping="false"
+                mode="decimal"
+                show-buttons
+                :min="1"
+                :step="1"
+                :allow-empty="false"
+                :disabled="statusUpdateButtonActive"
+              >
+              </InputNumber>
+            </div>
+            <div class="col text-end">
+              <label for="show-default-sensors">Показываемые датчики по умолчанию</label>
+              <InputNumber
+                v-model="defaultCountShowSensors"
+                id="show-default-sensors"
+                input-id="defaultCountShowSensors"
+                :useGrouping="false"
+                mode="decimal"
+                show-buttons
+                :min="1"
+                :step="1"
+                :allow-empty="false"
+                :disabled="statusUpdateButtonActive"
+              >
+              </InputNumber>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <RadioButton
+                v-model="defaultIntervalRadio"
+                id="dayDefault"
+                inputId="dayDefault"
+                name="day"
+                value="day"
+                :disabled="statusUpdateButtonActive"
+              />
+              <label for="dayDefault">&nbsp;День&nbsp;</label>
+              <RadioButton
+                v-model="defaultIntervalRadio"
+                id="hourDefault"
+                inputId="hourDefault"
+                name="hour"
+                value="hour"
+                :disabled="statusUpdateButtonActive"
+              />
+              <label for="hourDefault">&nbsp;Час&nbsp;</label>
+              <RadioButton
+                v-model="defaultIntervalRadio"
+                id="minuteDefault"
+                inputId="minuteDefault"
+                name="minute"
+                value="minute"
+                :disabled="statusUpdateButtonActive"
+              />
+              <label for="minuteDefault">&nbsp;Минута&nbsp;</label>
+              <RadioButton
+                v-model="defaultIntervalRadio"
+                id="secondDefault"
+                inputId="secondDefault"
+                name="second"
+                value="second"
+                :disabled="statusUpdateButtonActive"
+              />
+              <label for="secondDefault">&nbsp;Секунда</label>
+            </div>
+            <div class="col"></div>
           </div>
         </div>
         <template #footer>

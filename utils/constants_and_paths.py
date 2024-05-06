@@ -8,6 +8,7 @@ DATA_DIRECTORY = f'data{os.sep}'
 DATA_ANALOG = f'{DATA_DIRECTORY}data_AM.txt'
 DATA_DISCRETE = f'{DATA_DIRECTORY}democub_all.csv'
 DATA_KKS_ALL = f'{DATA_DIRECTORY}kks_all.csv'
+DATA_DEFAULT_FIELDS_CONFIG = f'{DATA_DIRECTORY}default_fields.json'
 
 REPORTS_DIRECTORY = f'reports{os.sep}'
 REPORTS_CUSTOM = f'{REPORTS_DIRECTORY}custom{os.sep}'
@@ -141,3 +142,8 @@ PDF_OPTIONS = {
 }
 
 SEPARATED_COUNT = 5
+
+# DOWNLOADED_STYLES_AND_JS_PATH = {
+#     f'vue{os.sep}node_modules{os.sep}bootstrap{os.sep}dist{os.sep}css{os.sep}bootstrap.css': 'bootstrap.css',
+#     f'vue{os.sep}node_modules{os.sep}bootstrap{os.sep}dist{os.sep}js{os.sep}bootstrap.bundle.js': 'bootstrap.bundle.js'
+# }

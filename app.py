@@ -177,6 +177,43 @@ def get_server_config():
 
 
 @eel.expose
+def get_default_fields():
+    """
+    Функция возвращает конфигурацию вводимых полей для запроса по умолчанию
+    :return: json объект полей по умочанию
+    """
+    logger.info(f"get_default_fields()")
+
+    try:
+        f = open(constants.DATA_DEFAULT_FIELDS_CONFIG, 'r', encoding='utf-8')
+    except FileNotFoundError as file_not_found_error_exception:
+        logger.error(file_not_found_error_exception)
+        default_fields = f"Файл {constants.DATA_DEFAULT_FIELDS_CONFIG} не найден. " \
+                         f"Установите параметры по умолчанию в конфигураторе"
+        return default_fields
+    else:
+        with f:
+            default_fields = json.load(f)
+
+    return default_fields
+
+
+@eel.expose
+def change_default_fields(default_fields):
+    """
+    Процедура сохраняет конфигурацию вводимых полей для запроса по умолчанию в конфиг json
+    :param default_fields: json объект полей по умолчанию
+    :return:
+    """
+    logger.info(f"change_default_fields({default_fields})")
+
+    with open(constants.DATA_DEFAULT_FIELDS_CONFIG, "w") as f:
+        json.dump(default_fields, f, indent=4)
+
+    logger.info(f"Файл {constants.DATA_DEFAULT_FIELDS_CONFIG} был успешно сохранен")
+
+
+@eel.expose
 def get_ip_port_config():
     """
     Функция возвращает ip-адрес и порт клиента OPC UA

@@ -78,6 +78,11 @@ def render_grid(json_code_table, json_grid_table_list, json_grid_status_table_li
             zip_file.writestr(data=sensor, zinfo_or_arcname=f"{index}.html")
             logger.info(f"{index}.html добавлен в архив")
 
+        # # Добавляем стили и js скрипты в архив
+        # for file_path, file_name in constants.DOWNLOADED_STYLES_AND_JS_PATH.items():
+        #     zip_file.write(file_path, arcname=file_name)
+        #     logger.info(f"{file_name} добавлен в архив")
+
 
 def render_bounce(json_bounce_table, parameters_of_request):
     logger.info(f"render_slice(json_bounce_table, parameters_of_request)")

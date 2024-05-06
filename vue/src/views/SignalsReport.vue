@@ -1,7 +1,7 @@
 <script>
 import { FilterMatchMode } from 'primevue/api'
 import Multiselect from '@vueform/multiselect'
-import { ref, onMounted, onUnmounted, onBeforeUnmount, computed } from 'vue'
+import { ref, onMounted, onUnmounted, onBeforeUnmount, computed, watch } from 'vue'
 import {
   getKKSFilterByMasks,
   getTypesOfSensors,
@@ -22,50 +22,60 @@ export default {
   setup(props, context) {
     const applicationStore = useApplicationStore()
 
-    const typesOfSensorsDataValue = ref(null)
+    function updateDefaultFields() {
+      typesOfSensorsDataValue.value = applicationStore.defaultFields.typesOfSensors
+      typesOfSensorsDataOptions.value[0].options = applicationStore.defaultFields.typesOfSensors
+      chosenTypesOfSensorsData = applicationStore.defaultFields.typesOfSensors
+
+      sensorsAndTemplateValue.value = applicationStore.defaultFields.sensorsAndTemplateValue
+      sensorsAndTemplateOptions.value[0].options =
+        applicationStore.defaultFields.sensorsAndTemplateValue
+      chosenSensorsAndTemplate = applicationStore.defaultFields.sensorsAndTemplateValue
+
+      quality.value = applicationStore.defaultFields.quality
+      chosenQuality = applicationStore.defaultFields.quality
+
+      dateDeepOfSearch.value = applicationStore.defaultFields.dateDeepOfSearch
+    }
+
+    watch(
+      () => applicationStore.defaultFields,
+      (before, after) => {
+        updateDefaultFields()
+      },
+      { deep: true }
+    )
+
+    const typesOfSensorsDataValue = ref(applicationStore.defaultFields.typesOfSensors)
     const typesOfSensorsDataOptions = ref([
       {
         label: 'Выбрать все типы данных',
-        options: []
+        options: applicationStore.defaultFields.typesOfSensors
       }
     ])
-    let chosenTypesOfSensorsData = []
+    let chosenTypesOfSensorsData = applicationStore.defaultFields.typesOfSensors
 
-    const sensorsAndTemplateValue = ref([])
+    const sensorsAndTemplateValue = ref(applicationStore.defaultFields.sensorsAndTemplateValue)
     const sensorsAndTemplateOptions = ref([
       {
         label: 'Шаблоны',
-        options: [
-          'Sochi2\\.GT\\.AM\\.\\S*-AM\\.Q?$',
-          '.*-icCV_.*\\.state\\..*',
-          'Sochi2\\.GT\\.AM\\..*'
-        ]
+        options: applicationStore.defaultFields.sensorsAndTemplateValue
       },
       {
         label: 'Теги KKS сигналов',
         options: []
       }
     ])
-    let chosenSensorsAndTemplate = []
-    const disabledSensorsAndTemplate = ref(true)
+    let chosenSensorsAndTemplate = applicationStore.defaultFields.sensorsAndTemplateValue
+    const disabledSensorsAndTemplate = ref(!chosenTypesOfSensorsData.length)
     const isLoadingSensorsAndTemplate = ref(false)
 
-    const qualitiesName = ref([
-      '8 - (BNC) - ОТКАЗ СВЯЗИ (TIMEOUT)',
-      '16 - (BSF) - ОТКАЗ ПАРАМ',
-      '24 - (BCF) - ОТКАЗ СВЯЗИ',
-      '28 - (BOS) - ОТКАЗ ОБСЛУЖ',
-      '88 - (BLC) - ОТКАЗ РАСЧЕТ',
-      '192 - (GOD) – ХОРОШ',
-      '200 - (GLC) - ХОРОШ РАСЧЕТ',
-      '216 - (GFO) - ХОРОШ ИМИТИР',
-      '224 - (GLT) - ХОРОШ ЛОКАЛ ВРЕМ'
-    ])
-    const quality = ref(null)
-    let chosenQuality = []
+    const qualitiesName = ref(applicationStore.qualitiesName)
+    const quality = ref(applicationStore.defaultFields.quality)
+    let chosenQuality = applicationStore.defaultFields.quality
 
     const dateTime = ref(new Date())
-    const dateDeepOfSearch = ref(new Date())
+    const dateDeepOfSearch = ref(applicationStore.defaultFields.dateDeepOfSearch)
     const maxDateTime = ref(new Date())
     const dateTimeBeginReport = ref()
     const dateTimeEndReport = ref()
@@ -98,6 +108,18 @@ export default {
       window.addEventListener('beforeunload', async (event) => {
         await cancelSignals()
       })
+
+      if (chosenSensorsAndTemplate.length && chosenTypesOfSensorsData.length) {
+        disabledSensorsAndTemplate.value = true
+        isLoadingSensorsAndTemplate.value = true
+        await getKKSFilterByMasks(
+          sensorsAndTemplateOptions,
+          chosenTypesOfSensorsData,
+          chosenSensorsAndTemplate
+        )
+        isLoadingSensorsAndTemplate.value = false
+        disabledSensorsAndTemplate.value = false
+      }
     })
 
     onBeforeUnmount(async () => {
@@ -392,6 +414,7 @@ export default {
     }
 
     return {
+      updateDefaultFields,
       typesOfSensorsDataValue,
       typesOfSensorsDataOptions,
       chosenTypesOfSensorsData,
@@ -465,7 +488,6 @@ export default {
             :create-option="false"
             placeholder="Выберите тип данных тегов"
             limit="-1"
-            :can-clear="false"
             @change="onTypesOfSensorsDataChange"
             :disabled="progressBarSignalsActive"
           ></Multiselect>
