@@ -54,7 +54,8 @@ export async function getDefaultFields(defaultFields) {
     alert(result)
   } else {
     Object.assign(defaultFields, result)
-    defaultFields.dateDeepOfSearch = new Date(defaultFields.dateDeepOfSearch)
+    if (defaultFields.dateDeepOfSearch === null) defaultFields.dateDeepOfSearch = ''
+    else defaultFields.dateDeepOfSearch = new Date(defaultFields.dateDeepOfSearch)
   }
 }
 
