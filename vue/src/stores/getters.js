@@ -137,6 +137,18 @@ export async function getKKSByMasksForTable(chosenSensors, types, sensorsAndTemp
   })
 }
 
+export async function getKKSByTextMasksFromSearch(templateText, types, dialogSearchedTagsTextArea) {
+  await mutex.runExclusive(async () => {
+    if (templateText.value.trim() === '') return
+    let kks = Array()
+    let masks = Array()
+    if (await eel.get_kks_tag_exist(templateText.value)()) kks.push(templateText.value)
+    else masks.push(templateText.value)
+    let result = await eel.get_kks(types, masks, kks)()
+    dialogSearchedTagsTextArea.value = result.join('\n')
+  })
+}
+
 /***
  * Процедура выполнения запроса среза
  * @param types

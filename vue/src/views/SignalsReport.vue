@@ -1,7 +1,7 @@
 <script>
 import { FilterMatchMode } from 'primevue/api'
 import Multiselect from '@vueform/multiselect'
-import { ref, onMounted, onUnmounted, onBeforeUnmount, computed, watch } from 'vue'
+import { ref, reactive, toRefs, onMounted, onUnmounted, onBeforeUnmount, computed, watch } from 'vue'
 import {
   getKKSFilterByMasks,
   getTypesOfSensors,
@@ -26,6 +26,11 @@ export default {
       typesOfSensorsDataValue.value = applicationStore.defaultFields.typesOfSensors
       typesOfSensorsDataOptions.value[0].options = applicationStore.defaultFields.typesOfSensors
       chosenTypesOfSensorsData = applicationStore.defaultFields.typesOfSensors
+
+      templates.templatesArray = []
+      for (const [index, template] of applicationStore.defaultFields.sensorsAndTemplateValue.entries()) {
+        templates.templatesArray.push({"id": index, "templateText": template})
+      }
 
       sensorsAndTemplateValue.value = applicationStore.defaultFields.sensorsAndTemplateValue
       sensorsAndTemplateOptions.value[0].options =
@@ -54,6 +59,36 @@ export default {
       }
     ])
     let chosenTypesOfSensorsData = applicationStore.defaultFields.typesOfSensors
+
+    const templates = reactive({
+      templatesArray: []
+    })
+
+    for (const [index, template] of applicationStore.defaultFields.sensorsAndTemplateValue.entries()) {
+      templates.templatesArray.push({"id": index, "templateText": template})
+    }
+
+    const changeTemplates = (position, value) => {
+      templates.templatesArray[position].templateText = value
+    }
+
+    const addClicked = (position) => {
+      let tempTemplate = JSON.parse(JSON.stringify(templates.templatesArray))
+      tempTemplate.splice(position+1, 0, {"id": position+1, "templateText": String()})
+      for (let i=position+2; i<tempTemplate.length; i++){
+        tempTemplate[i].id += 1
+      }
+      templates.templatesArray = JSON.parse(JSON.stringify(tempTemplate))
+    }
+
+    const removeClicked = (position) => {
+      let tempTemplate = JSON.parse(JSON.stringify(templates.templatesArray))
+      tempTemplate.splice(position, 1)
+      for (let i=position; i<tempTemplate.length; i++){
+        tempTemplate[i].id -= 1
+      }
+      templates.templatesArray = JSON.parse(JSON.stringify(tempTemplate))
+    }
 
     const sensorsAndTemplateValue = ref(applicationStore.defaultFields.sensorsAndTemplateValue)
     const sensorsAndTemplateOptions = ref([
@@ -419,6 +454,10 @@ export default {
       typesOfSensorsDataOptions,
       chosenTypesOfSensorsData,
       onTypesOfSensorsDataChange,
+      ...toRefs(templates),
+      changeTemplates,
+      addClicked,
+      removeClicked,
       sensorsAndTemplateValue,
       sensorsAndTemplateOptions,
       chosenSensorsAndTemplate,
@@ -493,6 +532,20 @@ export default {
           ></Multiselect>
         </div>
       </div>
+      <hr />
+      <div class="row align-items-center" v-for="template in templatesArray" :key="template" style="margin-bottom: 30px">
+        <UTemplate
+          :position="template.id"
+          :disabledFlag="disabledSensorsAndTemplate || progressBarSignalsActive"
+          :template="template.templateText"
+          :countOfTemplates="templatesArray.length"
+          :types="typesOfSensorsDataValue"
+          @addUTemplate="addClicked"
+          @removeUTemplate="removeClicked"
+          @changeTemplate="changeTemplates"
+        ></UTemplate>
+      </div>
+      <hr />
       <div class="row">
         <div class="col" style="padding-bottom: 20px">
           <label for="sensorsAndTemplateSignalsReport"
