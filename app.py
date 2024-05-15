@@ -135,13 +135,7 @@ def get_kks(types_list, mask_list, kks_list, selection_tag=None):
     except AssertionError:
         logger.warning("В найденных тегах есть дубликаты")
 
-    # # Отбор тегов по указанным маскам
-    # if mask_list:
-    #     for mask in mask_list:
-    #         kks = kks[kks[0].str.contains(mask, regex=True)]
-    #     kks_mask_list = kks[0].tolist()
-
-    # Отбор тегов по указанным маскам с объединением найденных тегов
+    # Отбор тегов по указанным маскам (полследовательный или с объединением найденных тегов)
     try:
         if mask_list:
             if selection_tag == "sequential":
@@ -166,7 +160,10 @@ def get_kks(types_list, mask_list, kks_list, selection_tag=None):
     kks_requested_list += kks_mask_list
     logger.info(len(kks_requested_list))
     
-    tags_df = pd.DataFrame(columns=['Наименование тега'], data={'Наименование тега': kks_requested_list})
+    tags_df = pd.DataFrame(columns=['Наименование тега', 'Описание тега'],
+                           data={'Наименование тега': kks_requested_list,
+                                 'Описание тега': kks[kks[0].isin(kks_requested_list)][2].tolist()})
+    
     tags_df.to_csv(constants.CSV_TAGS)
     shutil.copy(constants.CSV_TAGS, f'{constants.WEB_DIR}tags.csv')
     logger.info(f'Датафрейм {constants.WEB_DIR}tags.csv доступен для выкачки')
