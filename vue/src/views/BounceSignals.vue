@@ -517,8 +517,8 @@ export default {
         </div>
       </div>
       <div class="row align-items-center">
-        <div class="col" style="padding-bottom: 20px">Вид отбора тегов:</div>
-        <div class="col" style="padding-bottom: 20px">
+        <div class="col-3" style="padding-bottom: 20px">Применять фильтр как:</div>
+        <div class="col-9" style="padding-bottom: 20px">
           <RadioButton
             v-model="selectionTagRadio"
             inputId="sequential"
@@ -526,9 +526,12 @@ export default {
             value="sequential"
             :disabled="progressBarBounceSignalsActive"
           />
-          <label for="sequential">&nbsp;&nbsp;Последовательный</label>
+          <label for="sequential">&nbsp;&nbsp;Последовательные шаблоны</label>
         </div>
-        <div class="col" style="padding-bottom: 20px">
+      </div>
+      <div class="row align-items-center">
+        <div class="col-3" style="padding-bottom: 20px"></div>
+        <div class="col-9" style="padding-bottom: 20px">
           <RadioButton
             v-model="selectionTagRadio"
             inputId="union"
@@ -536,7 +539,7 @@ export default {
             value="union"
             :disabled="progressBarBounceSignalsActive"
           />
-          <label for="union">&nbsp;&nbsp;Объединение шаблонов тегов</label>
+          <label for="union">&nbsp;&nbsp;Объединение шаблонов</label>
         </div>
       </div>
       <hr />
