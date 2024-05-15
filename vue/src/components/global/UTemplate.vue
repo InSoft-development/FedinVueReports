@@ -1,9 +1,7 @@
 <script>
 import { ref, toRef, onMounted } from 'vue'
 
-import {
-  getKKSByTextMasksFromSearch
-} from '../../stores'
+import { getKKSByTextMasksFromSearch } from '../../stores'
 
 export default {
   name: 'UTemplate',
@@ -39,10 +37,16 @@ export default {
 
     const dialogSearchActive = ref(false)
     const dialogSearchedTagsTextArea = ref('')
+    const countOfTags = ref(0)
 
     const onButtonDialogSearchActive = async () => {
       localComponentTagsLoadingFlag.value = true
-      await getKKSByTextMasksFromSearch(templateText, chosenTypes.value, dialogSearchedTagsTextArea)
+      await getKKSByTextMasksFromSearch(
+        templateText,
+        chosenTypes.value,
+        dialogSearchedTagsTextArea,
+        countOfTags
+      )
       localComponentTagsLoadingFlag.value = false
       dialogSearchActive.value = true
     }
@@ -51,14 +55,19 @@ export default {
 
     const onSearchButtonClick = async () => {
       localComponentTagsLoadingFlag.value = true
-      await getKKSByTextMasksFromSearch(templateText, chosenTypes.value, dialogSearchedTagsTextArea)
+      await getKKSByTextMasksFromSearch(
+        templateText,
+        chosenTypes.value,
+        dialogSearchedTagsTextArea,
+        countOfTags
+      )
       localComponentTagsLoadingFlag.value = false
       dialogSearchActive.value = true
     }
 
     // onMounted(async () => {
     //   localComponentTagsLoadingFlag.value = true
-    //   await getKKSByTextMasksFromSearch(templateText, chosenTypes.value, dialogSearchedTagsTextArea)
+    //   await getKKSByTextMasksFromSearch(templateText, chosenTypes.value, dialogSearchedTagsTextArea, countOfTags)
     //   localComponentTagsLoadingFlag.value = false
     // })
 
@@ -72,6 +81,7 @@ export default {
       onRemoveButtonClick,
       dialogSearchActive,
       dialogSearchedTagsTextArea,
+      countOfTags,
       onButtonDialogSearchActive,
       localComponentTagsLoadingFlag,
       onSearchButtonClick
@@ -104,7 +114,8 @@ export default {
       label="Поиск тегов"
       icon="pi pi-search"
       iconPos="right"
-      :disabled="currentFlag || localComponentTagsLoadingFlag" />
+      :disabled="currentFlag || localComponentTagsLoadingFlag"
+    />
     <Dialog
       v-model:visible="dialogSearchActive"
       :visible="dialogSearchActive"
@@ -118,7 +129,9 @@ export default {
       <div class="container">
         <div class="row">
           <div class="col">
-            <label :for="'template-search-text-' + currentPosition">Введите шаблон или теги сигналов</label>
+            <label :for="'template-search-text-' + currentPosition"
+              >Введите шаблон или теги сигналов</label
+            >
           </div>
         </div>
         <div class="row">
@@ -134,12 +147,23 @@ export default {
             </InputText>
           </div>
           <div class="col-1">
-            <Button @click="onSearchButtonClick" icon="pi pi-search" :disabled="currentFlag || localComponentTagsLoadingFlag" />
+            <Button
+              @click="onSearchButtonClick"
+              icon="pi pi-search"
+              :disabled="currentFlag || localComponentTagsLoadingFlag"
+            />
           </div>
         </div>
         <div class="row">
           <div class="col">
-            <label :for="'template-search-text-area' + currentPosition">Найденные по шаблону теги</label>
+            Количество запрошенных тегов: <b>{{ countOfTags }}</b>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col">
+            <label :for="'template-search-text-area' + currentPosition"
+              >Найденные по шаблону теги</label
+            >
             <TextArea
               :id="'template-search-text-area' + currentPosition"
               v-model="dialogSearchedTagsTextArea"
@@ -157,9 +181,17 @@ export default {
   </div>
   <div class="col-1" v-if="countOfTemplatesLength === 1"></div>
   <div class="col-1" v-else>
-    <Button @click="onRemoveButtonClick" icon="pi pi-minus" :disabled="currentFlag || localComponentTagsLoadingFlag"/>
+    <Button
+      @click="onRemoveButtonClick"
+      icon="pi pi-minus"
+      :disabled="currentFlag || localComponentTagsLoadingFlag"
+    />
   </div>
   <div class="col-1">
-    <Button @click="onAddButtonClick" icon="pi pi-plus" :disabled="currentFlag || localComponentTagsLoadingFlag" />
+    <Button
+      @click="onAddButtonClick"
+      icon="pi pi-plus"
+      :disabled="currentFlag || localComponentTagsLoadingFlag"
+    />
   </div>
 </template>

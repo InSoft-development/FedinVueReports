@@ -89,6 +89,8 @@ export default {
       defaultChosenTypesOfSensorsData = val
     }
 
+    const defaultSelectionTagRadio = ref('')
+
     const defaultTemplate = ref('')
 
     const defaultQualitiesName = ref([
@@ -123,6 +125,7 @@ export default {
     const changeDefaultFields = () => {
       let defaultFields = {
         typesOfSensors: defaultChosenTypesOfSensorsData,
+        selectionTag: defaultSelectionTagRadio.value,
         sensorsAndTemplateValue: defaultTemplate.value
           .split(',')
           .map((item) => item.trim())
@@ -154,6 +157,8 @@ export default {
       await getTypesOfSensors(defaultTypesOfSensorsDataOptions)
       defaultChosenTypesOfSensorsData = applicationStore.defaultFields.typesOfSensors
 
+      defaultSelectionTagRadio.value = applicationStore.defaultFields.selectionTag
+
       defaultTemplate.value = applicationStore.defaultFields.sensorsAndTemplateValue.join(', ')
 
       defaultQuality.value = applicationStore.defaultFields.quality
@@ -173,6 +178,8 @@ export default {
       defaultTypesOfSensorsDataValue.value = applicationStore.defaultFields.typesOfSensors
       getTypesOfSensors(defaultTypesOfSensorsDataOptions)
       defaultChosenTypesOfSensorsData = applicationStore.defaultFields.typesOfSensors
+
+      defaultSelectionTagRadio.value = applicationStore.defaultFields.selectionTag
 
       defaultTemplate.value = applicationStore.defaultFields.sensorsAndTemplateValue.join(', ')
 
@@ -256,6 +263,7 @@ export default {
       defaultTypesOfSensorsDataOptions,
       defaultChosenTypesOfSensorsData,
       onDefaultTypesOfSensorsDataChange,
+      defaultSelectionTagRadio,
       defaultTemplate,
       defaultQualitiesName,
       defaultQuality,
@@ -400,6 +408,31 @@ export default {
                 @change="onDefaultTypesOfSensorsDataChange"
                 :disabled="statusUpdateButtonActive"
               ></Multiselect>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">Выберите вид отбора тегов по умолчанию</div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <RadioButton
+                v-model="defaultSelectionTagRadio"
+                id="sequentialDefault"
+                inputId="sequentialDefault"
+                name="sequential"
+                value="sequential"
+                :disabled="statusUpdateButtonActive"
+              />
+              <label for="sequentialDefault">&nbsp;Последовательный&nbsp;</label>
+              <RadioButton
+                v-model="defaultSelectionTagRadio"
+                id="unionDefault"
+                inputId="unionDefault"
+                name="union"
+                value="union"
+                :disabled="statusUpdateButtonActive"
+              />
+              <label for="unionDefault">&nbsp;Объединение шаблонов тегов&nbsp;</label>
             </div>
           </div>
           <div class="row">

@@ -44,6 +44,7 @@ export async function getDefaultFields(defaultFields) {
   if (typeof result === 'string') {
     Object.assign(defaultFields, {
       typesOfSensors: ['String', 'UInt32', 'Boolean', 'Float'],
+      selectionTag: 'sequential',
       sensorsAndTemplateValue: ['Sochi2\\.GT\\.AM\\.\\S*-AM\\.Q?$'],
       quality: ['8 - (BNC) - ОТКАЗ СВЯЗИ (TIMEOUT)', '192 - (GOD) – ХОРОШ'],
       dateDeepOfSearch: new Date(),
@@ -124,7 +125,12 @@ export async function getKKSFilterByMasks(options, types, masks) {
  * @param sensorsAndTemplate
  * @returns {Promise<void>}
  */
-export async function getKKSByMasksForTable(chosenSensors, types, sensorsAndTemplate) {
+export async function getKKSByMasksForTable(
+  chosenSensors,
+  types,
+  sensorsAndTemplate,
+  selectionTagRadio
+) {
   await mutex.runExclusive(async () => {
     let kks = Array()
     let masks = Array()
@@ -132,12 +138,21 @@ export async function getKKSByMasksForTable(chosenSensors, types, sensorsAndTemp
       if (await eel.get_kks_tag_exist(element)()) kks.push(element)
       else masks.push(element)
     }
-    let result = await eel.get_kks(types, masks, kks)()
+    let result = await eel.get_kks(types, masks, kks, selectionTagRadio.value)()
+    if (result[0] == ['']) {
+      alert('Неверный синтаксис регулярного выражения. Ничего не нашлось')
+      return
+    }
     chosenSensors.value = result
   })
 }
 
-export async function getKKSByTextMasksFromSearch(templateText, types, dialogSearchedTagsTextArea) {
+export async function getKKSByTextMasksFromSearch(
+  templateText,
+  types,
+  dialogSearchedTagsTextArea,
+  countOfTags
+) {
   await mutex.runExclusive(async () => {
     if (templateText.value.trim() === '') return
     let kks = Array()
@@ -145,6 +160,11 @@ export async function getKKSByTextMasksFromSearch(templateText, types, dialogSea
     if (await eel.get_kks_tag_exist(templateText.value)()) kks.push(templateText.value)
     else masks.push(templateText.value)
     let result = await eel.get_kks(types, masks, kks)()
+    if (result[0] == ['']) {
+      alert('Неверный синтаксис регулярного выражения. Ничего не нашлось')
+      return
+    }
+    countOfTags.value = result.length
     dialogSearchedTagsTextArea.value = result.join('\n')
   })
 }
@@ -162,6 +182,7 @@ export async function getKKSByTextMasksFromSearch(templateText, types, dialogSea
  */
 export async function getSignals(
   types,
+  selectionTag,
   sensorsAndTemplate,
   qualities,
   date,
@@ -183,6 +204,7 @@ export async function getSignals(
 
     let result = await eel.get_signals_data(
       types,
+      selectionTag,
       masks,
       kks,
       qualities,

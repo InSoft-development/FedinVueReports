@@ -20,6 +20,7 @@ import shlex
 import itertools
 
 import pandas as pd
+import re
 
 import json
 from loguru import logger
@@ -103,18 +104,22 @@ def get_kks_by_masks(types_list, mask_list):
 
 
 @eel.expose
-def get_kks(types_list, mask_list, kks_list):
+def get_kks(types_list, mask_list, kks_list, selection_tag=None):
     """
     Функция возвращает массив kks датчиков из файла тегов kks_all.csv по маске шаблона.
     Используется при выполнеии запросов на бэкенде
     :param types_list: массив выбранных пользователем типов данных
     :param mask_list: массив маск шаблонов поиска regex
     :param kks_list: массив kks напрямую, указанные пользователем
+    :param selection_tag: выбранный вид отбора тегов
     :return: массив строк kks датчиков для выполнения запроса
     """
-    logger.info(f"get_kks({types_list} ,{mask_list}, {kks_list})")
+    logger.info(f"get_kks({types_list} ,{mask_list}, {kks_list}, {selection_tag})")
     kks_requested_list = []
     kks_mask_list = []
+
+    if selection_tag is None:
+        selection_tag = "sequential"
 
     # Отбор тегов kks по типу данных и маске
     kks = KKS_ALL.copy(deep=True)
@@ -137,12 +142,22 @@ def get_kks(types_list, mask_list, kks_list):
     #     kks_mask_list = kks[0].tolist()
 
     # Отбор тегов по указанным маскам с объединением найденных тегов
-    kks_mask_set = set()
-    if mask_list:
-        for mask in mask_list:
-            template_kks_set = set(kks[kks[0].str.contains(mask, regex=True)][0].tolist())
-            kks_mask_set = kks_mask_set.union(template_kks_set)
-        kks_mask_list = list(kks_mask_set)
+    try:
+        if mask_list:
+            if selection_tag == "sequential":
+                for mask in mask_list:
+                    kks = kks[kks[0].str.contains(mask, regex=True)]
+                kks_mask_list = kks[0].tolist()
+
+            if selection_tag == "union":
+                kks_mask_set = set()
+                for mask in mask_list:
+                    template_kks_set = set(kks[kks[0].str.contains(mask, regex=True)][0].tolist())
+                    kks_mask_set = kks_mask_set.union(template_kks_set)
+                kks_mask_list = list(kks_mask_set)
+    except re.error as regular_expression_except:
+        logger.error(f"Неверный синтаксис регулярного выражения {regular_expression_except}")
+        return ['']
 
     # Отбор тегов,указанных вручную с их объединением
     if kks_list:
@@ -166,7 +181,7 @@ def get_kks_tag_exist(kks_tag):
     :param kks_tag: проверяемый тег kks
     :return: True - тег в файле тегов kks_all.csv; False - тега не найден в файле тегов kks_all.csv или это шаблон маски
     """
-    logger.info(f"get_kks_exist({kks_tag})")
+    logger.info(f"get_kks_tag_exist({kks_tag})")
     return kks_tag in KKS_ALL[0].values
 
 
@@ -418,10 +433,11 @@ signals_greenlet = None
 
 
 @eel.expose
-def get_signals_data(types_list, mask_list, kks_list, quality, date, date_deep_search):
+def get_signals_data(types_list, selection_tag, mask_list, kks_list, quality, date, date_deep_search):
     """
     Функция запуска гринлета выполнения запроса по срезам тегов
     :param types_list: массив выбранных пользователем типов данных
+    :param selection_tag: выбранный вид отбора тегов
     :param mask_list: массив маск шаблонов поиска regex
     :param kks_list: массив kks напрямую, указанные пользователем
     :param quality: массив кодов качества, указанные пользователем
@@ -429,12 +445,13 @@ def get_signals_data(types_list, mask_list, kks_list, quality, date, date_deep_s
     :param date_deep_search: дата глубины поиска данных в архивах
     :return: json объект для заполнения таблицы срезов тегов
     """
-    logger.info(f"get_signals_data({types_list} ,{mask_list}, {kks_list}, {quality}, {date}, {date_deep_search})")
+    logger.info(f"get_signals_data({types_list}, {selection_tag}, {mask_list}, {kks_list}, {quality}, {date}, {date_deep_search})")
 
-    def get_signals_data_spawn(types_list, mask_list, kks_list, quality, date, date_deep_search):
+    def get_signals_data_spawn(types_list, selection_tag, mask_list, kks_list, quality, date, date_deep_search):
         """
         Функция запуска выполнения запроса по срезам тегов
         :param types_list: массив выбранных пользователем типов данных
+        :param selection_tag: выбранный вид отбора тегов
         :param mask_list: массив маск шаблонов поиска regex
         :param kks_list: массив kks напрямую, указанные пользователем
         :param quality: массив кодов качества, указанные пользователем
@@ -442,11 +459,11 @@ def get_signals_data(types_list, mask_list, kks_list, quality, date, date_deep_s
         :param date_deep_search: дата глубины поиска данных в архивах
         :return: json объект для заполнения таблицы срезов тегов
         """
-        logger.info(f"get_signals_data_spawn({types_list} ,{mask_list}, {kks_list}, {quality}, {date}, {date_deep_search})")
+        logger.info(f"get_signals_data_spawn({types_list}, {selection_tag}, {mask_list}, {kks_list}, {quality}, {date}, {date_deep_search})")
         error_flag = False  # флаг ошибки поиска в архивах
 
         eel.setUpdateSignalsRequestStatus(f"Формирование списка kks сигналов\n")
-        kks_requested_list = get_kks(types_list, mask_list, kks_list)
+        kks_requested_list = get_kks(types_list, mask_list, kks_list, selection_tag)
         eel.setUpdateSignalsRequestStatus(f"Список kks сигналов успешно сформирован\n")
 
         # Подготовка к выполнению запроса
@@ -638,7 +655,7 @@ def get_signals_data(types_list, mask_list, kks_list, quality, date, date_deep_s
     if any(started_greenlet):
         logger.warning(f"signals_greenlet is running")
         return f"Запрос уже выполняется для другого клиента. Попробуйте выполнить запрос позже"
-    signals_greenlet = eel.spawn(get_signals_data_spawn, types_list, mask_list, kks_list, quality, date, date_deep_search)
+    signals_greenlet = eel.spawn(get_signals_data_spawn, types_list, selection_tag, mask_list, kks_list, quality, date, date_deep_search)
     eel.gvt.joinall([signals_greenlet])
 
     return signals_greenlet.value

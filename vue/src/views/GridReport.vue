@@ -2,7 +2,16 @@
 import { FilterMatchMode } from 'primevue/api'
 import Multiselect from '@vueform/multiselect'
 
-import { ref, reactive, toRefs, onMounted, onUnmounted, onBeforeUnmount, computed, watch } from 'vue'
+import {
+  ref,
+  reactive,
+  toRefs,
+  onMounted,
+  onUnmounted,
+  onBeforeUnmount,
+  computed,
+  watch
+} from 'vue'
 import {
   getKKSFilterByMasks,
   getTypesOfSensors,
@@ -28,9 +37,14 @@ export default {
       typesOfSensorsDataOptions.value[0].options = applicationStore.defaultFields.typesOfSensors
       chosenTypesOfSensorsData = applicationStore.defaultFields.typesOfSensors
 
+      selectionTagRadio.value = applicationStore.defaultFields.selectionTag
+
       templates.templatesArray = []
-      for (const [index, template] of applicationStore.defaultFields.sensorsAndTemplateValue.entries()) {
-        templates.templatesArray.push({"id": index, "templateText": template})
+      for (const [
+        index,
+        template
+      ] of applicationStore.defaultFields.sensorsAndTemplateValue.entries()) {
+        templates.templatesArray.push({ id: index, templateText: template })
       }
 
       sensorsAndTemplateValue.value = applicationStore.defaultFields.sensorsAndTemplateValue
@@ -59,12 +73,17 @@ export default {
     ])
     let chosenTypesOfSensorsData = applicationStore.defaultFields.typesOfSensors
 
+    const selectionTagRadio = ref(applicationStore.defaultFields.selectionTag)
+
     const templates = reactive({
       templatesArray: []
     })
 
-    for (const [index, template] of applicationStore.defaultFields.sensorsAndTemplateValue.entries()) {
-      templates.templatesArray.push({"id": index, "templateText": template})
+    for (const [
+      index,
+      template
+    ] of applicationStore.defaultFields.sensorsAndTemplateValue.entries()) {
+      templates.templatesArray.push({ id: index, templateText: template })
     }
 
     const changeTemplates = (position, value) => {
@@ -73,8 +92,8 @@ export default {
 
     const addClicked = (position) => {
       let tempTemplate = JSON.parse(JSON.stringify(templates.templatesArray))
-      tempTemplate.splice(position+1, 0, {"id": position+1, "templateText": String()})
-      for (let i=position+2; i<tempTemplate.length; i++){
+      tempTemplate.splice(position + 1, 0, { id: position + 1, templateText: String() })
+      for (let i = position + 2; i < tempTemplate.length; i++) {
         tempTemplate[i].id += 1
       }
       templates.templatesArray = JSON.parse(JSON.stringify(tempTemplate))
@@ -83,7 +102,7 @@ export default {
     const removeClicked = (position) => {
       let tempTemplate = JSON.parse(JSON.stringify(templates.templatesArray))
       tempTemplate.splice(position, 1)
-      for (let i=position; i<tempTemplate.length; i++){
+      for (let i = position; i < tempTemplate.length; i++) {
         tempTemplate[i].id -= 1
       }
       templates.templatesArray = JSON.parse(JSON.stringify(tempTemplate))
@@ -274,9 +293,15 @@ export default {
 
       chosenSensorsAndTemplate = templates.templatesArray.map(({ templateText }) => templateText)
 
+      let emptyTemplateFlag = false
+      for (const element of chosenSensorsAndTemplate) {
+        if (element.trim() === '') emptyTemplateFlag = true
+      }
+
       if (
         !chosenTypesOfSensorsData.length ||
         !chosenSensorsAndTemplate.length ||
+        emptyTemplateFlag ||
         !dateTimeBegin.value ||
         !dateTimeEnd.value
       ) {
@@ -314,7 +339,12 @@ export default {
         differenceInTime / (1000 * applicationStore.deltaTimeInSeconds[intervalRadio.value])
       )
 
-      await getKKSByMasksForTable(chosenSensors, chosenTypesOfSensorsData, chosenSensorsAndTemplate)
+      await getKKSByMasksForTable(
+        chosenSensors,
+        chosenTypesOfSensorsData,
+        chosenSensorsAndTemplate,
+        selectionTagRadio
+      )
 
       estimatedTime.value =
         (chosenSensors.value.length * differenceInDimension) /
@@ -506,6 +536,7 @@ export default {
       typesOfSensorsDataOptions,
       chosenTypesOfSensorsData,
       onTypesOfSensorsDataChange,
+      selectionTagRadio,
       ...toRefs(templates),
       changeTemplates,
       addClicked,
@@ -586,8 +617,36 @@ export default {
           ></Multiselect>
         </div>
       </div>
+      <div class="row align-items-center">
+        <div class="col" style="padding-bottom: 20px">Вид отбора тегов:</div>
+        <div class="col" style="padding-bottom: 20px">
+          <RadioButton
+            v-model="selectionTagRadio"
+            inputId="sequential"
+            name="sequential"
+            value="sequential"
+            :disabled="progressBarGridActive"
+          />
+          <label for="sequential">&nbsp;&nbsp;Последовательный</label>
+        </div>
+        <div class="col" style="padding-bottom: 20px">
+          <RadioButton
+            v-model="selectionTagRadio"
+            inputId="union"
+            name="union"
+            value="union"
+            :disabled="progressBarGridActive"
+          />
+          <label for="union">&nbsp;&nbsp;Объединение шаблонов тегов</label>
+        </div>
+      </div>
       <hr />
-      <div class="row align-items-center" v-for="template in templatesArray" :key="template" style="margin-bottom: 30px">
+      <div
+        class="row align-items-center"
+        v-for="template in templatesArray"
+        :key="template"
+        style="margin-bottom: 30px"
+      >
         <UTemplate
           :position="template.id"
           :disabledFlag="disabledSensorsAndTemplate || progressBarGridActive"
@@ -600,52 +659,52 @@ export default {
         ></UTemplate>
       </div>
       <hr />
-<!--      <div class="row">-->
-<!--        <div class="col" style="padding-bottom: 20px">-->
-<!--          <label for="sensorsAndTemplateGridReport"-->
-<!--            >Выберите шаблон или теги сигналов, проходящие по условию введенного шаблона</label-->
-<!--          >-->
-<!--          <Multiselect-->
-<!--            id="sensorsAndTemplateGridReport"-->
-<!--            v-model="sensorsAndTemplateValue"-->
-<!--            mode="tags"-->
-<!--            :disabled="disabledSensorsAndTemplate || progressBarGridActive"-->
-<!--            :close-on-select="false"-->
-<!--            :groups="true"-->
-<!--            :options="sensorsAndTemplateOptions"-->
-<!--            :searchable="true"-->
-<!--            :create-option="true"-->
-<!--            :filter-results="false"-->
-<!--            :loading="isLoadingSensorsAndTemplate"-->
-<!--            placeholder="Выберите шаблон или теги сигналов"-->
-<!--            limit="-1"-->
-<!--            appendNewOption="false"-->
-<!--            @change="onMultiselectSensorsAndTemplateChange"-->
-<!--            @create="onMultiselectSensorsAndTemplateCreateTag"-->
-<!--            @search-change="onMultiselectSensorsAndTemplateSearchChange"-->
-<!--            @select="onMultiselectSensorsAndTemplateSelect"-->
-<!--            @deselect="onMultiselectSensorsAndTemplateDeselect"-->
-<!--          >-->
-<!--            <template v-slot:option="{ option }">-->
-<!--              <div class="multiselect-options">-->
-<!--                <span class="multiselect-tag-wrapper">{{ option.label }}</span>-->
-<!--              </div>-->
-<!--              <div :id="'divRemoveButton' + option.label" style="margin: 0 0 0 auto">-->
-<!--                <Button-->
-<!--                  v-if="sensorsAndTemplateOptions[0].options.includes(option.label)"-->
-<!--                  :id="'removeButton' + option.label"-->
-<!--                  class="multiselect-tag-remove"-->
-<!--                >-->
-<!--                  <span-->
-<!--                    :id="'spanRemoveButton' + option.label"-->
-<!--                    class="multiselect-tag-remove-icon"-->
-<!--                  ></span>-->
-<!--                </Button>-->
-<!--              </div>-->
-<!--            </template>-->
-<!--          </Multiselect>-->
-<!--        </div>-->
-<!--      </div>-->
+      <!--      <div class="row">-->
+      <!--        <div class="col" style="padding-bottom: 20px">-->
+      <!--          <label for="sensorsAndTemplateGridReport"-->
+      <!--            >Выберите шаблон или теги сигналов, проходящие по условию введенного шаблона</label-->
+      <!--          >-->
+      <!--          <Multiselect-->
+      <!--            id="sensorsAndTemplateGridReport"-->
+      <!--            v-model="sensorsAndTemplateValue"-->
+      <!--            mode="tags"-->
+      <!--            :disabled="disabledSensorsAndTemplate || progressBarGridActive"-->
+      <!--            :close-on-select="false"-->
+      <!--            :groups="true"-->
+      <!--            :options="sensorsAndTemplateOptions"-->
+      <!--            :searchable="true"-->
+      <!--            :create-option="true"-->
+      <!--            :filter-results="false"-->
+      <!--            :loading="isLoadingSensorsAndTemplate"-->
+      <!--            placeholder="Выберите шаблон или теги сигналов"-->
+      <!--            limit="-1"-->
+      <!--            appendNewOption="false"-->
+      <!--            @change="onMultiselectSensorsAndTemplateChange"-->
+      <!--            @create="onMultiselectSensorsAndTemplateCreateTag"-->
+      <!--            @search-change="onMultiselectSensorsAndTemplateSearchChange"-->
+      <!--            @select="onMultiselectSensorsAndTemplateSelect"-->
+      <!--            @deselect="onMultiselectSensorsAndTemplateDeselect"-->
+      <!--          >-->
+      <!--            <template v-slot:option="{ option }">-->
+      <!--              <div class="multiselect-options">-->
+      <!--                <span class="multiselect-tag-wrapper">{{ option.label }}</span>-->
+      <!--              </div>-->
+      <!--              <div :id="'divRemoveButton' + option.label" style="margin: 0 0 0 auto">-->
+      <!--                <Button-->
+      <!--                  v-if="sensorsAndTemplateOptions[0].options.includes(option.label)"-->
+      <!--                  :id="'removeButton' + option.label"-->
+      <!--                  class="multiselect-tag-remove"-->
+      <!--                >-->
+      <!--                  <span-->
+      <!--                    :id="'spanRemoveButton' + option.label"-->
+      <!--                    class="multiselect-tag-remove-icon"-->
+      <!--                  ></span>-->
+      <!--                </Button>-->
+      <!--              </div>-->
+      <!--            </template>-->
+      <!--          </Multiselect>-->
+      <!--        </div>-->
+      <!--      </div>-->
       <div class="row">
         <div class="col">
           <label for="calendarDateBeginGridReport">Введите дату начала</label>

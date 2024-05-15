@@ -16,72 +16,72 @@ import Skeleton from 'primevue/skeleton'
 import ConfirmDialog from 'primevue/confirmdialog'
 
 const components = [
-    {
-        name: 'UTemplate',
-        component: UTemplate
-    },
-    {
-        name: 'Button',
-        component: Button
-    },
-    {
-        name: 'Calendar',
-        component: Calendar
-    },
-    {
-        name: 'InputNumber',
-        component: InputNumber
-    },
-    {
-        name: 'RadioButton',
-        component: RadioButton
-    },
-    {
-        name: 'Checkbox',
-        component: Checkbox
-    },
-    {
-        name: 'InputText',
-        component: InputText
-    },
-    {
-        name: 'FloatLabel',
-        component: FloatLabel
-    },
-    {
-        name: 'DataTable',
-        component: DataTable
-    },
-    {
-        name: 'Column',
-        component: Column
-    },
-    {
-        name: 'ProgressBar',
-        component: ProgressBar
-    },
-    {
-        name: 'Dialog',
-        component: Dialog
-    },
-    {
-        name: 'Textarea',
-        component: Textarea
-    },
-    {
-        name: 'Skeleton',
-        component: Skeleton
-    },
-    {
-        name: 'ConfirmDialog',
-        component: ConfirmDialog
-    }
+  {
+    name: 'UTemplate',
+    component: UTemplate
+  },
+  {
+    name: 'Button',
+    component: Button
+  },
+  {
+    name: 'Calendar',
+    component: Calendar
+  },
+  {
+    name: 'InputNumber',
+    component: InputNumber
+  },
+  {
+    name: 'RadioButton',
+    component: RadioButton
+  },
+  {
+    name: 'Checkbox',
+    component: Checkbox
+  },
+  {
+    name: 'InputText',
+    component: InputText
+  },
+  {
+    name: 'FloatLabel',
+    component: FloatLabel
+  },
+  {
+    name: 'DataTable',
+    component: DataTable
+  },
+  {
+    name: 'Column',
+    component: Column
+  },
+  {
+    name: 'ProgressBar',
+    component: ProgressBar
+  },
+  {
+    name: 'Dialog',
+    component: Dialog
+  },
+  {
+    name: 'Textarea',
+    component: Textarea
+  },
+  {
+    name: 'Skeleton',
+    component: Skeleton
+  },
+  {
+    name: 'ConfirmDialog',
+    component: ConfirmDialog
+  }
 ]
 
 export default {
-    install(app) {
-        components.forEach(({ name, component }) => {
-            app.component(name, component)
-        })
-    }
+  install(app) {
+    components.forEach(({ name, component }) => {
+      app.component(name, component)
+    })
+  }
 }
