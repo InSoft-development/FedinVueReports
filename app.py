@@ -130,13 +130,21 @@ def get_kks(types_list, mask_list, kks_list):
     except AssertionError:
         logger.warning("В найденных тегах есть дубликаты")
 
-    # Отбор тегов по указанным маскам
+    # # Отбор тегов по указанным маскам
+    # if mask_list:
+    #     for mask in mask_list:
+    #         kks = kks[kks[0].str.contains(mask, regex=True)]
+    #     kks_mask_list = kks[0].tolist()
+
+    # Отбор тегов по указанным маскам с объединением найденных тегов
+    kks_mask_set = set()
     if mask_list:
         for mask in mask_list:
-            kks = kks[kks[0].str.contains(mask, regex=True)]
-        kks_mask_list = kks[0].tolist()
+            template_kks_set = set(kks[kks[0].str.contains(mask, regex=True)][0].tolist())
+            kks_mask_set = kks_mask_set.union(template_kks_set)
+        kks_mask_list = list(kks_mask_set)
 
-    # Отбор тегов, указанных вручную
+    # Отбор тегов,указанных вручную с их объединением
     if kks_list:
         kks_requested_list = [kks for kks in kks_list if kks not in kks_mask_list]
 

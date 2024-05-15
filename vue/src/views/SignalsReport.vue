@@ -279,9 +279,18 @@ export default {
 
     async function onRequestButtonClick() {
       dataTableRequested.value = false
+
+      chosenSensorsAndTemplate = templates.templatesArray.map(({ templateText }) => templateText)
+
+      let emptyTemplateFlag = false
+      for (const element of chosenSensorsAndTemplate) {
+        if (element.trim() === '') emptyTemplateFlag = true
+      }
+
       if (
         !chosenTypesOfSensorsData.length ||
         !chosenSensorsAndTemplate.length ||
+        emptyTemplateFlag ||
         !chosenQuality.length ||
         !dateTime.value ||
         !dateDeepOfSearch.value
@@ -406,7 +415,7 @@ export default {
     async function onBigRequestButtonClick() {
       dialogBigRequestActive.value = false
 
-      statusRequestTextArea.value += 'Подготовка к выполнению долгого запроса\n'
+      statusRequestTextArea.value += 'Подготовка к выполнению запроса\n'
 
       filters.value = {
         'Код сигнала (KKS)': {
@@ -546,52 +555,52 @@ export default {
         ></UTemplate>
       </div>
       <hr />
-      <div class="row">
-        <div class="col" style="padding-bottom: 20px">
-          <label for="sensorsAndTemplateSignalsReport"
-            >Выберите шаблон или теги сигналов, проходящие по условию введенного шаблона</label
-          >
-          <Multiselect
-            id="sensorsAndTemplateSignalsReport"
-            v-model="sensorsAndTemplateValue"
-            mode="tags"
-            :disabled="disabledSensorsAndTemplate || progressBarSignalsActive"
-            :close-on-select="false"
-            :groups="true"
-            :options="sensorsAndTemplateOptions"
-            :searchable="true"
-            :create-option="true"
-            :filter-results="false"
-            :loading="isLoadingSensorsAndTemplate"
-            placeholder="Выберите шаблон или теги сигналов"
-            limit="-1"
-            appendNewOption="false"
-            @change="onMultiselectSensorsAndTemplateChange"
-            @create="onMultiselectSensorsAndTemplateCreateTag"
-            @search-change="onMultiselectSensorsAndTemplateSearchChange"
-            @select="onMultiselectSensorsAndTemplateSelect"
-            @deselect="onMultiselectSensorsAndTemplateDeselect"
-          >
-            <template v-slot:option="{ option }">
-              <div class="multiselect-options">
-                <span class="multiselect-tag-wrapper">{{ option.label }}</span>
-              </div>
-              <div :id="'divRemoveButton' + option.label" style="margin: 0 0 0 auto">
-                <Button
-                  v-if="sensorsAndTemplateOptions[0].options.includes(option.label)"
-                  :id="'removeButton' + option.label"
-                  class="multiselect-tag-remove"
-                >
-                  <span
-                    :id="'spanRemoveButton' + option.label"
-                    class="multiselect-tag-remove-icon"
-                  ></span>
-                </Button>
-              </div>
-            </template>
-          </Multiselect>
-        </div>
-      </div>
+<!--      <div class="row">-->
+<!--        <div class="col" style="padding-bottom: 20px">-->
+<!--          <label for="sensorsAndTemplateSignalsReport"-->
+<!--            >Выберите шаблон или теги сигналов, проходящие по условию введенного шаблона</label-->
+<!--          >-->
+<!--          <Multiselect-->
+<!--            id="sensorsAndTemplateSignalsReport"-->
+<!--            v-model="sensorsAndTemplateValue"-->
+<!--            mode="tags"-->
+<!--            :disabled="disabledSensorsAndTemplate || progressBarSignalsActive"-->
+<!--            :close-on-select="false"-->
+<!--            :groups="true"-->
+<!--            :options="sensorsAndTemplateOptions"-->
+<!--            :searchable="true"-->
+<!--            :create-option="true"-->
+<!--            :filter-results="false"-->
+<!--            :loading="isLoadingSensorsAndTemplate"-->
+<!--            placeholder="Выберите шаблон или теги сигналов"-->
+<!--            limit="-1"-->
+<!--            appendNewOption="false"-->
+<!--            @change="onMultiselectSensorsAndTemplateChange"-->
+<!--            @create="onMultiselectSensorsAndTemplateCreateTag"-->
+<!--            @search-change="onMultiselectSensorsAndTemplateSearchChange"-->
+<!--            @select="onMultiselectSensorsAndTemplateSelect"-->
+<!--            @deselect="onMultiselectSensorsAndTemplateDeselect"-->
+<!--          >-->
+<!--            <template v-slot:option="{ option }">-->
+<!--              <div class="multiselect-options">-->
+<!--                <span class="multiselect-tag-wrapper">{{ option.label }}</span>-->
+<!--              </div>-->
+<!--              <div :id="'divRemoveButton' + option.label" style="margin: 0 0 0 auto">-->
+<!--                <Button-->
+<!--                  v-if="sensorsAndTemplateOptions[0].options.includes(option.label)"-->
+<!--                  :id="'removeButton' + option.label"-->
+<!--                  class="multiselect-tag-remove"-->
+<!--                >-->
+<!--                  <span-->
+<!--                    :id="'spanRemoveButton' + option.label"-->
+<!--                    class="multiselect-tag-remove-icon"-->
+<!--                  ></span>-->
+<!--                </Button>-->
+<!--              </div>-->
+<!--            </template>-->
+<!--          </Multiselect>-->
+<!--        </div>-->
+<!--      </div>-->
       <div class="row">
         <div class="col" style="padding-bottom: 20px">
           <label for="qualitySignalsReport">Код качества сигнала</label>
