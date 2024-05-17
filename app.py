@@ -163,7 +163,6 @@ def get_kks(types_list, mask_list, kks_list, selection_tag=None):
     tags_df = pd.DataFrame(columns=['Наименование тега', 'Описание тега'],
                            data={'Наименование тега': kks_requested_list,
                                  'Описание тега': kks[kks[0].isin(kks_requested_list)][2].tolist()})
-    
     tags_df.to_csv(constants.CSV_TAGS)
     shutil.copy(constants.CSV_TAGS, f'{constants.WEB_DIR}tags.csv')
     logger.info(f'Датафрейм {constants.WEB_DIR}tags.csv доступен для выкачки')

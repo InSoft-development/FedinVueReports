@@ -411,7 +411,7 @@ export default {
             </div>
           </div>
           <div class="row">
-            <div class="col">Выберите вид отбора тегов по умолчанию</div>
+            <div class="col">Применять фильтр по умолчанию как:</div>
           </div>
           <div class="row">
             <div class="col">
@@ -423,7 +423,7 @@ export default {
                 value="sequential"
                 :disabled="statusUpdateButtonActive"
               />
-              <label for="sequentialDefault">&nbsp;Последовательный&nbsp;</label>
+              <label for="sequentialDefault">&nbsp;Последовательные шаблоны&nbsp;</label>
               <RadioButton
                 v-model="defaultSelectionTagRadio"
                 id="unionDefault"
@@ -432,7 +432,7 @@ export default {
                 value="union"
                 :disabled="statusUpdateButtonActive"
               />
-              <label for="unionDefault">&nbsp;Объединение шаблонов тегов&nbsp;</label>
+              <label for="unionDefault">&nbsp;Объединение шаблонов&nbsp;</label>
             </div>
           </div>
           <div class="row">
